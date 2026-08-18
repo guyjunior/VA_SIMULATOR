@@ -983,8 +983,8 @@ body:not(.light) .sev-neg   { color: #66bb6a; }
 <div class="tabs-bar">
   <button class="tab-btn active" data-tab="method-tab" onclick="switchTab('method-tab')">METHOD</button>
   <button class="tab-btn" data-tab="analyst-tab" data-sc="0" onclick="switchScenario(0)">EXAMPLE 1 · S9 BUDESONIDE</button>
-  <button class="tab-btn" data-tab="analyst-tab" data-sc="1" onclick="switchScenario(1)">EXAMPLE 2 · S1 OSTARINE (LYNX EYES)</button>
-  <button class="tab-btn" data-tab="analyst-tab" data-sc="2" onclick="switchScenario(2)">EXAMPLE 3 · S4 CLOMIFENE (DOUBLE PEAK)</button>
+  <button class="tab-btn" data-tab="analyst-tab" data-sc="1" onclick="switchScenario(1)">EXAMPLE 2 · S1 OSTARINE (CENTROID PROTOCOL #2)</button>
+  <button class="tab-btn" data-tab="analyst-tab" data-sc="2" onclick="switchScenario(2)">EXAMPLE 3 · S4 CLOMIFENE (CO-ELUTING ISOMERS)</button>
   <button class="tab-btn" data-tab="metrics-tab" onclick="switchTab('metrics-tab')">EXPERIMENT METRICS</button>
 </div>
 
@@ -1052,21 +1052,21 @@ body:not(.light) .sev-neg   { color: #66bb6a; }
       <div class="method-divider">DATA PROCESSING &nbsp;—&nbsp; substance-specific pipeline branches</div>
 
       <div class="form-group">
-        <label>Double Peak Situation ? (PQC)</label>
+        <label>Co-eluting Isomers ? (PQC)</label>
         <div class="radio-group">
           <label><input type="radio" name="mTwoPeaks" value="yes"> Yes</label>
           <label><input type="radio" name="mTwoPeaks" value="no"> No</label>
         </div>
       </div>
       <div class="form-group">
-        <label>Sample Double Peak Situation ?</label>
+        <label>Sample Shows Both Isomers ?</label>
         <div class="radio-group">
           <label><input type="radio" name="mSampleTwoPeaks" value="yes"> Yes</label>
           <label><input type="radio" name="mSampleTwoPeaks" value="no"> No</label>
         </div>
       </div>
       <div class="form-group">
-        <label>Lynx Eyes ? (intensity-range check)</label>
+        <label>Centroid Protocol #2 ? (any-level reportable)</label>
         <div class="radio-group">
           <label><input type="radio" name="mAnyPeaks" value="yes"> Yes</label>
           <label><input type="radio" name="mAnyPeaks" value="no"> No</label>
@@ -1077,7 +1077,7 @@ body:not(.light) .sev-neg   { color: #66bb6a; }
         <input type="number" id="mWindowCut" min="2" max="1000" step="1" value="10">
       </div>
       <div class="form-group">
-        <label>Concentration</label>
+        <label>PQC Concentration (C_PQC)</label>
         <input type="number" id="mConcentration" step="0.01">
       </div>
       <div class="form-group">
@@ -1097,29 +1097,29 @@ body:not(.light) .sev-neg   { color: #66bb6a; }
 
       <div class="slider-group">
         <div class="slider-group-head">
-          <span>R²</span>
+          <span>Pseudo R²</span>
           <span class="val" id="mR2Val">-12.00</span>
         </div>
         <input type="range" id="mR2Slider" min="-1200" max="100" step="1" value="-1200">
-        <div class="hint">If R² ≥ this value → inside the suspect fuzzy zone (fuzzy_r2). Below it → falls to DTW.</div>
+        <div class="hint">If Pseudo R² ≥ this value → inside the suspect zone of the fuzzy R² engine. Below it → falls to the DTW gate.</div>
       </div>
 
       <div class="slider-group">
         <div class="slider-group-head">
-          <span>DTW</span>
+          <span>DTW Gate</span>
           <span class="val" id="mDtwVal">0.020</span>
         </div>
         <input type="range" id="mDtwSlider" min="4" max="120" step="1" value="4">
-        <div class="hint">If DTW ≤ this value → shape still close enough to keep as suspect (fuzzy_dtw), even when R² fails.</div>
+        <div class="hint">If DTW ≤ this value → shape still close enough to keep as suspect (fuzzy_dtw), even when Pseudo R² fails.</div>
       </div>
 
       <div class="slider-group span-full" id="intFactorGroup">
         <div class="slider-group-head">
-          <span>Lynx Eyes &nbsp;(only applied when Lynx Eyes = YES · Sample above PQC always suspects HIGH)</span>
+          <span>Intensity Factor &nbsp;(Centroid Protocol #2 only · Sample above PQC always → High Suspicion)</span>
           <span class="val" id="mIntFactorVal">16x</span>
         </div>
         <input type="range" id="mIntFactorSlider" min="10" max="200" step="1" value="16">
-        <div class="hint">If PQC_max / Sample_max ≤ factor → SUSPECT LOW. Sample_max &gt; PQC_max always → SUSPECT HIGH regardless.</div>
+        <div class="hint">If PQC_max / Sample_max ≤ intensity factor → Low Suspicion (Protocol #2). Sample_max &gt; PQC_max always → High Suspicion (Protocol #1).</div>
       </div>
     </div>
 
@@ -1147,7 +1147,7 @@ body:not(.light) .sev-neg   { color: #66bb6a; }
         <div class="legend-item"><div class="legend-dot" style="background:rgba(211,47,47,0.5);height:10px;width:10px;border-radius:50%"></div>Residuals</div>
       </div>
       <div class="verdict-box" id="finalVerdict">
-        <div class="verdict-label">Final Classification</div>
+        <div class="verdict-label">Final Verdict</div>
         <div id="verdictPeaksWrap" style="display:none">
           <div class="verdict-two-peaks">
             <div class="verdict-peak-box"><div class="peak-l">PEAK A</div><div class="peak-v sev-neg" id="verdictA">—</div></div>
@@ -1163,27 +1163,27 @@ body:not(.light) .sev-neg   { color: #66bb6a; }
   <!-- ===== Column 2: R² + formula ===== -->
   <div class="analyst-rinfo">
     <div class="r2-compact" id="r2Display">
-      <div class="r2-label">sklearn.r2_score(y_true, y_pred)</div>
+      <div class="r2-label">Pseudo R² — sklearn.r2_score(y_true=Sample, y_pred=PQC)</div>
       <div class="r2-value" id="r2Value">1.000</div>
       <div class="r2-interpretation" id="r2Interp">Perfect fit</div>
     </div>
     <div class="formula-compact">
-      <div><span class="highlight">R² = 1 - (SS_res / SS_tot)</span></div>
+      <div><span class="highlight">Pseudo R² = 1 - (SS_res / SS_tot)</span></div>
       <div style="height:3px"></div>
       <div><span class="green">SS_res</span> = <span id="ssResVal">0.00</span></div>
       <div style="opacity:0.7">  = Σ(y_i - ŷ_i)²</div>
       <div><span class="yellow">SS_tot</span> = <span id="ssTotVal">0.00</span></div>
       <div style="opacity:0.7">  = Σ(y_i - ȳ)²</div>
       <div style="height:3px"></div>
-      <div><span class="highlight">R²</span> = 1 - (<span class="green" id="ratioRes">0</span> / <span class="yellow" id="ratioTot">0</span>)</div>
-      <div><span class="highlight">R²</span> = <span id="r2Calc">1.000</span></div>
+      <div><span class="highlight">Pseudo R²</span> = 1 - (<span class="green" id="ratioRes">0</span> / <span class="yellow" id="ratioTot">0</span>)</div>
+      <div><span class="highlight">Pseudo R²</span> = <span id="r2Calc">1.000</span></div>
     </div>
 
     <div class="controls-compact">
       <div class="controls-title">Sample-peak perturbations</div>
       <div class="control-row">
         <label title="Random baseline noise amplitude">Noise</label>
-        <input type="range" id="noiseSlider" min="0" max="50" value="5">
+        <input type="range" id="noiseSlider" min="0" max="200" value="5">
         <span class="val" id="noiseVal">5</span>
       </div>
       <div class="control-row">
@@ -1193,7 +1193,7 @@ body:not(.light) .sev-neg   { color: #66bb6a; }
       </div>
       <div class="control-row">
         <label title="Retention-time shift relative to PQC">RT Shift</label>
-        <input type="range" id="centroidSlider" min="-75" max="75" step="0.5" value="0">
+        <input type="range" id="centroidSlider" min="-75" max="75" step="0.1" value="0">
         <span class="val" id="centroidVal">0</span>
       </div>
       <div class="control-row">
@@ -1208,8 +1208,8 @@ body:not(.light) .sev-neg   { color: #66bb6a; }
       </div>
       <div class="control-row">
         <label title="Smoothing window (triangular moving average)">Smoothing</label>
-        <input type="range" id="smoothSlider" min="1" max="21" step="2" value="1">
-        <span class="val" id="smoothVal">1</span>
+        <input type="range" id="smoothSlider" min="1" max="21" step="2" value="7">
+        <span class="val" id="smoothVal">7</span>
       </div>
       <div class="control-row crop-row" id="cropToggle" onclick="toggleCrop()" style="cursor:pointer;">
         <label title="Final Window Crop — restrict analysis to ± N points around PQC peak">Cut</label>
@@ -1226,19 +1226,19 @@ body:not(.light) .sev-neg   { color: #66bb6a; }
 
   <!-- ===== Column 3: Fuzzy charts stacked ===== -->
   <div class="analyst-fuzzy">
-    <div class="fuzzy-scope-badge" title="Fuzzy-logic classification is applied ONLY to the R² coefficient. DTW and ITP-Cutoff use threshold-based rules (see pipeline Step 3 / Step 4).">
+    <div class="fuzzy-scope-badge" title="Mamdani fuzzy inference is applied ONLY to the Pseudo R² similarity (Step 2). DTW and ITP-Cutoff use threshold gates (pipeline Steps 3–4).">
       <span class="fuzzy-scope-icon">ƒ</span>
       <div class="fuzzy-scope-text">
-        <strong>FUZZY LOGIC — R² only</strong>
-        <span>Applied exclusively to R² (Step 2). DTW &amp; ITP-Cutoff use threshold rules.</span>
+        <strong>MAMDANI FUZZY ENGINE — Pseudo R² only</strong>
+        <span>Applied exclusively to Pseudo R² (Step 2). DTW &amp; ITP-Cutoff use threshold gates.</span>
       </div>
     </div>
     <div class="fuzzy-chart-box">
-      <div class="fuzzy-chart-title">Input MFs — R² coefficient</div>
+      <div class="fuzzy-chart-title">Input MFs — Pseudo R² domain</div>
       <canvas id="inputChart" width="440" height="170"></canvas>
     </div>
     <div class="fuzzy-chart-box">
-      <div class="fuzzy-chart-title">Output MFs — R² classification</div>
+      <div class="fuzzy-chart-title">Output MFs — suspicion score</div>
       <canvas id="outputChart" width="440" height="170"></canvas>
     </div>
   </div>
@@ -1251,7 +1251,7 @@ body:not(.light) .sev-neg   { color: #66bb6a; }
       <div class="fuzzy-class-sub" id="classSub">centroid = 5.00</div>
     </div>
     <div class="fuzzy-rules-compact">
-      <div class="fuzzy-rules-title">Rule firing — R² = <span id="fuzzyR2Echo">1.000</span></div>
+      <div class="fuzzy-rules-title">Rule firing — Pseudo R² = <span id="fuzzyR2Echo">1.000</span></div>
       <div class="fuzzy-rule-row">
         <div class="fuzzy-rule-label" style="color:var(--c-vlow)">Very Low</div>
         <div class="fuzzy-rule-bar-container"><div class="fuzzy-rule-bar" id="r1Bar" style="background:var(--c-vlow);width:0%"></div></div>
@@ -1285,7 +1285,7 @@ body:not(.light) .sev-neg   { color: #66bb6a; }
     <div class="pipeline-panel-compact">
       <div class="pipeline-box">
         <div class="pipeline-title-compact">
-          <span>PIPELINE DECISION</span>
+          <span>FIVE-STEP DECISION PIPELINE</span>
           <div class="pipeline-flags" id="pipelineFlags"></div>
         </div>
         <div class="pipeline-steps-compact" id="pipelineSteps"></div>
@@ -1570,6 +1570,48 @@ body:not(.light) .sev-neg   { color: #66bb6a; }
     <div class="table-container" id="substanceTableTotal"></div>
   </div>
 
+  <!-- ===== Scale Projection — interpretation-time analysis (VA vs human analysts) ===== -->
+  <h2 class="section-title">Scale Projection — The Advantage Grows with Volume</h2>
+  <p style="color: var(--text-muted); margin-bottom: 12px; font-size: 0.9rem;">
+    The larger the sample volume, the more evident the Virtual Analyst's advantage becomes.
+    Time comparison based on a batch of 20 samples with 274 substances each — the Virtual Analyst
+    processed it in 15 minutes, the Senior Analyst in 1h30min, and the Junior Analyst in 2h20min.
+    Choose the VA operating scenario:
+  </p>
+
+  <!-- Toggle VA 8h / 24h -->
+  <div style="display: flex; justify-content: center; margin-bottom: 24px;">
+    <div style="display: inline-flex; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 50px; padding: 4px; gap: 4px;">
+      <button id="btnVa8h" onclick="switchVAMode(8)" style="border: none; padding: 10px 24px; border-radius: 50px; cursor: pointer; font-weight: 600; font-size: 0.9rem; font-family: inherit; transition: all 0.3s ease; background: var(--accent); color: #fff;">
+        VA 8h/day (matched)
+      </button>
+      <button id="btnVa24h" onclick="switchVAMode(24)" style="border: none; padding: 10px 24px; border-radius: 50px; cursor: pointer; font-weight: 600; font-size: 0.9rem; font-family: inherit; transition: all 0.3s ease; background: transparent; color: var(--text-muted);">
+        VA 24h/day (real operation)
+      </button>
+    </div>
+  </div>
+
+  <!-- Scenario cards (dynamic) -->
+  <div id="scenarioCards" class="chart-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 24px;"></div>
+
+  <!-- Working-days projection chart -->
+  <div class="chart-grid">
+    <div class="chart-card full-width">
+      <h3>Working-Days Projection by Sample Volume</h3>
+      <div class="chart-subtitle">The larger the volume, the more evident the VA advantage</div>
+      <div class="chart-container medium">
+        <canvas id="perfScaleProjection"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Complete comparative table (dynamic) -->
+  <div class="chart-card" style="margin-bottom: 24px; margin-top: 20px;">
+    <h3 style="margin-bottom: 12px;">Complete Comparative Table</h3>
+    <div class="chart-subtitle" style="margin-bottom: 12px;" id="perfTableSubtitle">All performance metrics — VA operating 8h/day, analysts 8h/day</div>
+    <div class="table-container" id="perfTable"></div>
+  </div>
+
 </div> <!-- /metrics-tab -->
 
 <script>
@@ -1636,7 +1678,7 @@ const substances = [
     windowCut: 10,
     r2: -12.00, dtw: 0.020, intensityFactor: 16,
     // --- Chromatogram state (per scenario) ---
-    state: { sampleOffset: 0, noise: 5, sigma: 0.2, skew: 0, centroid: 0, amp: 1.0, cropEnabled: false, noiseSeed: null, smooth: 1 }
+    state: { sampleOffset: 0, noise: 5, sigma: 0.2, skew: 0, centroid: 0, amp: 1.0, cropEnabled: false, noiseSeed: null, smooth: 7 }
   },
   {
     name: 'S1. Ostarine',
@@ -1651,7 +1693,7 @@ const substances = [
     twoPeaks: false, sampleTwoPeaks: false, anyPeaks: true,
     windowCut: 10,
     r2: -12.00, dtw: 0.020, intensityFactor: 100,
-    state: { sampleOffset: 0, noise: 5, sigma: 0.2, skew: 0, centroid: 0, amp: 0.02, cropEnabled: false, noiseSeed: null, smooth: 1 }
+    state: { sampleOffset: 0, noise: 5, sigma: 0.2, skew: 0, centroid: 0, amp: 0.02, cropEnabled: false, noiseSeed: null, smooth: 7 }
   },
   {
     name: 'S4. Clomifene (4-OH)*/ Toremifene (4-OH)*',
@@ -1666,7 +1708,7 @@ const substances = [
     twoPeaks: true, sampleTwoPeaks: true, anyPeaks: false,
     windowCut: 10,
     r2: -12.00, dtw: 0.020, intensityFactor: 16,
-    state: { sampleOffset: 0, noise: 5, sigma: 0.2, skew: 0, centroid: 0, amp: 1.0, cropEnabled: false, noiseSeed: null, smooth: 1 }
+    state: { sampleOffset: 0, noise: 5, sigma: 0.2, skew: 0, centroid: 0, amp: 1.0, cropEnabled: false, noiseSeed: null, smooth: 7 }
   }
 ];
 
@@ -1867,13 +1909,22 @@ function peakCentersFor(s) {
   return [timeToIdx(midMin)];
 }
 
-function getRefData(s) {
+function getRefData(s, evalRange) {
+  // evalRange = {lo, hi} → restrict data generation to this strict window
+  // (used by the pipeline when Cut is enabled, so external bins cannot leak in via smoothing).
   const data = new Array(numPoints).fill(0);
   const st = s.state;
   const centers = peakCentersFor(s);
   const amps = s.twoPeaks ? [amplitude, amplitude * 0.8] : [amplitude];
   const sigEff = st.sigma * RES_SCALE;
-  for (let i = 0; i < numPoints; i++) {
+  // Default: substance's RT window (max 1.0 min). evalRange overrides for evaluation.
+  let winLo = Math.max(0, Math.floor(timeToIdx(parseFloat(s.startTime))));
+  let winHi = Math.min(numPoints - 1, Math.ceil(timeToIdx(parseFloat(s.endTime))));
+  if (evalRange) {
+    winLo = Math.max(winLo, evalRange.lo);
+    winHi = Math.min(winHi, evalRange.hi);
+  }
+  for (let i = winLo; i <= winHi; i++) {
     let v = 0;
     for (let k = 0; k < centers.length; k++) {
       v += gaussian(i, centers[k], sigEff, amps[k]);
@@ -1881,10 +1932,14 @@ function getRefData(s) {
     data[i] = v;
   }
   const sw = Math.max(1, (st.smooth | 0));
-  return smoothSeries(data, sw);
+  const smoothed = smoothSeries(data, sw);
+  // Hard-zero outside the window (smoothing creates edge leak)
+  for (let i = 0; i < winLo; i++) smoothed[i] = 0;
+  for (let i = winHi + 1; i < numPoints; i++) smoothed[i] = 0;
+  return smoothed;
 }
 
-function getSampleData(s) {
+function getSampleData(s, evalRange) {
   const data = new Array(numPoints).fill(0);
   const st = s.state;
   const allCenters = peakCentersFor(s);
@@ -1894,19 +1949,64 @@ function getSampleData(s) {
   const amps = s.sampleTwoPeaks ? [amplitude * ampMult, amplitude * 0.8 * ampMult] : [amplitude * ampMult];
   const sigEff = st.sigma * RES_SCALE;
   const centEff = st.centroid * RES_SCALE;
-  for (let i = 0; i < numPoints; i++) {
+  // Default: substance's 1.0-min window. When evalRange is provided (pipeline
+  // call with Cut enabled), restrict generation even further so no interferent
+  // can leak into the crop region via smoothing.
+  let winLo = Math.max(0, Math.floor(timeToIdx(parseFloat(s.startTime))));
+  let winHi = Math.min(numPoints - 1, Math.ceil(timeToIdx(parseFloat(s.endTime))));
+  if (evalRange) {
+    winLo = Math.max(winLo, evalRange.lo);
+    winHi = Math.min(winHi, evalRange.hi);
+  }
+  const winSpan = winHi - winLo;
+
+  // ----- Build interferent "peaks with valleys" -----
+  // Real chromatographic baselines aren't smooth noise — they have discrete bumps
+  // (impurities, neighbouring compounds bleeding in). We seed N fake gaussian bumps
+  // at deterministic positions inside the window, scaled by the Noise slider.
+  // The noiseSeed array is reused as a pseudo-RNG so positions/amplitudes stay
+  // stable for the substance (until the user clicks Reset).
+  const interferents = [];
+  if (st.noise > 0 && st.noiseSeed && st.noiseSeed.length >= 32) {
+    const NUM_BUMPS = 8;                              // up to 8 interferent peaks
+    const bumpSigma = Math.max(1, sigEff * 1.2);      // ≈ same width as analyte
+    const bumpAmpRef = amplitude * 0.45;              // peak height upper bound
+    for (let k = 0; k < NUM_BUMPS; k++) {
+      const seedPos = (st.noiseSeed[k] + 1) * 0.5;            // 0..1
+      const seedAmp = Math.abs(st.noiseSeed[NUM_BUMPS + k]);  // 0..1
+      const pos = winLo + seedPos * winSpan;
+      // Suppress bumps too close to the analyte centre so they read as separate
+      const distToCentre = Math.min(...centers.map(c => Math.abs(pos - (c + centEff))));
+      const guard = bumpSigma * 2.2;                  // valley around the analyte peak
+      if (distToCentre < guard) continue;
+      const amp = bumpAmpRef * seedAmp * (st.noise / 100); // scaled by noise slider
+      interferents.push({ pos, sigma: bumpSigma * (0.6 + seedAmp * 0.6), amp });
+    }
+  }
+
+  for (let i = winLo; i <= winHi; i++) {
+    // Main analyte peak(s)
     let v = 0;
     for (let k = 0; k < centers.length; k++) {
       const mu = centers[k] + centEff;
       v += skewedGaussian(i, mu, sigEff, amps[k], st.skew);
     }
+    // Interferent peaks (with valleys between them)
+    for (const b of interferents) {
+      v += gaussian(i, b.pos, b.sigma, b.amp);
+    }
     v += st.sampleOffset;
-    if (st.noise > 0 && i < st.noiseSeed.length) v += st.noiseSeed[i] * st.noise * 1e5;
+    // Small residual noise on top of the structured baseline (faint speckle only)
+    if (st.noise > 0 && i < st.noiseSeed.length) v += st.noiseSeed[i] * st.noise * 5e4;
     data[i] = Math.max(0, v);
   }
   // Smoothing pass — triangular moving average (window from state.smooth)
   const sw = Math.max(1, st.smooth | 0);
-  return smoothSeries(data, sw);
+  const smoothed = smoothSeries(data, sw);
+  // Hard-zero outside the window (smoothing creates edge leak)
+  for (let i = 0; i < winLo; i++) smoothed[i] = 0;
+  for (let i = winHi + 1; i < numPoints; i++) smoothed[i] = 0;
+  return smoothed;
 }
 
 // Triangular moving-average smoother (mirrors chromatographic smoothing pre-processing).
@@ -1951,9 +2051,19 @@ function draw() {
   const cropEnd   = Math.min(numPoints - 1, pqcIdx + cropHalf);
   document.getElementById('cropHalfEcho').textContent = cropHalf;
 
-  // R² computed on active evaluation range
-  const r2Ref    = s.state.cropEnabled ? refData.slice(cropStart, cropEnd + 1)    : refData;
-  const r2Sample = s.state.cropEnabled ? sampleData.slice(cropStart, cropEnd + 1) : sampleData;
+  // R² computed on active evaluation range — when Cut is enabled, use eval-only
+  // data (regenerated strictly inside the crop) so the displayed R² matches the
+  // pipeline R² and is not affected by external interferents through smoothing.
+  let r2Ref, r2Sample;
+  if (s.state.cropEnabled) {
+    const evalRef = getRefData(s,    { lo: cropStart, hi: cropEnd });
+    const evalSmp = getSampleData(s, { lo: cropStart, hi: cropEnd });
+    r2Ref    = evalRef.slice(cropStart, cropEnd + 1);
+    r2Sample = evalSmp.slice(cropStart, cropEnd + 1);
+  } else {
+    r2Ref    = refData;
+    r2Sample = sampleData;
+  }
   // sklearn convention: r2_score(y_true=SAMPLE, y_pred=PQC)
   // → SS_tot is variance of SAMPLE (matches user's Python pipeline)
   const { r2, ssRes, ssTot } = computeR2(r2Sample, r2Ref);
@@ -2034,8 +2144,21 @@ function draw() {
   ctx.fillText('Intensity', 0, 0);
   ctx.restore();
 
+  // Restrict every chromatogram-related draw to the visible 1.0-min viewport.
+  // Indices outside this range carry baseline-zero values that, if drawn, leak
+  // into the left/right margins of the canvas.
+  const drawLo = Math.max(0, Math.floor(viewStartIdx));
+  const drawHi = Math.min(numPoints - 1, Math.ceil(viewEndIdx));
+
+  // Clip everything that follows to the data plot rectangle so nothing
+  // can spill into the axis-label margins even by a fraction of a pixel.
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, w, h);
+  ctx.clip();
+
   // Residuals
-  for (let i = 0; i < numPoints; i += 2) {
+  for (let i = drawLo; i <= drawHi; i += 2) {
     const x = toCanvasX(i);
     const yRef = toCanvasY(refData[i]);
     const ySample = toCanvasY(sampleData[i]);
@@ -2052,17 +2175,17 @@ function draw() {
   ctx.strokeStyle = tc.refCurve;
   ctx.lineWidth = 2.5;
   ctx.beginPath();
-  for (let i = 0; i < numPoints; i++) {
+  for (let i = drawLo; i <= drawHi; i++) {
     const x = toCanvasX(i);
     const y = toCanvasY(refData[i]);
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    if (i === drawLo) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.stroke();
   ctx.fillStyle = tc.refFill;
   ctx.beginPath();
-  ctx.moveTo(toCanvasX(0), toCanvasY(0));
-  for (let i = 0; i < numPoints; i++) ctx.lineTo(toCanvasX(i), toCanvasY(refData[i]));
-  ctx.lineTo(toCanvasX(numPoints - 1), toCanvasY(0));
+  ctx.moveTo(toCanvasX(drawLo), toCanvasY(0));
+  for (let i = drawLo; i <= drawHi; i++) ctx.lineTo(toCanvasX(i), toCanvasY(refData[i]));
+  ctx.lineTo(toCanvasX(drawHi), toCanvasY(0));
   ctx.closePath();
   ctx.fill();
 
@@ -2071,13 +2194,15 @@ function draw() {
   ctx.lineWidth = 2.5;
   ctx.setLineDash([6, 4]);
   ctx.beginPath();
-  for (let i = 0; i < numPoints; i++) {
+  for (let i = drawLo; i <= drawHi; i++) {
     const x = toCanvasX(i);
     const y = toCanvasY(sampleData[i]);
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    if (i === drawLo) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.stroke();
   ctx.setLineDash([]);
+
+  ctx.restore();
 
   // Peak labels
   const centers = peakCentersFor(s);
@@ -2194,7 +2319,7 @@ function updateR2Display(r2, ssRes, ssTot) {
   } else {
     r2El.style.color = isDark ? '#ef5350' : '#c62828';
     displayEl.style.background = isDark ? 'rgba(239,83,80,0.1)' : 'rgba(198,40,40,0.08)';
-    interpEl.textContent = 'Negative R²: worse than the mean!';
+    interpEl.textContent = 'Negative Pseudo R²: worse than the mean!';
     interpEl.style.color = isDark ? '#ef5350' : '#c62828';
   }
 
@@ -2311,7 +2436,7 @@ function drawFuzzyInputChart() {
     ctx.font = 'bold 11px Consolas, monospace';
     ctx.textAlign = 'center';
     const lx = Math.max(40, Math.min(w - 40, px));
-    ctx.fillText('R² = ' + fuzzyR2.toFixed(2), lx, -6);
+    ctx.fillText('Pseudo R² = ' + fuzzyR2.toFixed(2), lx, -6);
     ctx.fillStyle = tc.textMuted;
     ctx.font = '11px Segoe UI, sans-serif';
     ctx.fillText('R² coefficient', w / 2, h + 30);
@@ -2491,7 +2616,7 @@ document.getElementById('sigmaSlider').addEventListener('input', (e) => {
 });
 document.getElementById('centroidSlider').addEventListener('input', (e) => {
   curr().state.centroid = parseFloat(e.target.value);
-  document.getElementById('centroidVal').textContent = curr().state.centroid.toFixed(1);
+  document.getElementById('centroidVal').textContent = curr().state.centroid.toFixed(2);
   draw();
 });
 document.getElementById('ampSlider').addEventListener('input', (e) => {
@@ -2523,7 +2648,7 @@ function resetAll() {
   s.state.sigma = 0.2;
   s.state.skew = 0;
   s.state.centroid = 0;
-  s.state.smooth = 1;
+  s.state.smooth = 7;
   s.state.amp = (s === substances[1]) ? 0.02 : 1.0;
   const seed = [];
   for (let i = 0; i < numPoints + 100; i++) seed.push((Math.random() - 0.5) * 2);
@@ -2539,7 +2664,7 @@ function refreshAnalystSliders() {
   document.getElementById('sigmaSlider').value = st.sigma;
   document.getElementById('sigmaVal').textContent = (typeof st.sigma === 'number' ? st.sigma.toFixed(1) : st.sigma);
   document.getElementById('centroidSlider').value = st.centroid;
-  document.getElementById('centroidVal').textContent = (typeof st.centroid === 'number' ? st.centroid.toFixed(1) : st.centroid);
+  document.getElementById('centroidVal').textContent = (typeof st.centroid === 'number' ? st.centroid.toFixed(2) : st.centroid);
   const ampRaw = Math.round(st.amp * 100);
   document.getElementById('ampSlider').value = ampRaw;
   const ampLabel = st.amp >= 10 ? st.amp.toFixed(0) + 'x' : st.amp.toFixed(1) + 'x';
@@ -2564,9 +2689,9 @@ function refreshScenarioHeader() {
     el.textContent = text;
     tags.appendChild(el);
   }
-  pill('Double Peak ' + (s.twoPeaks ? '✓' : '✗'), s.twoPeaks);
-  pill('Sample Double Peak ' + (s.sampleTwoPeaks ? '✓' : '✗'), s.sampleTwoPeaks);
-  pill('Lynx Eyes ' + (s.anyPeaks ? '✓' : '✗'), s.anyPeaks);
+  pill('Co-eluting Isomers ' + (s.twoPeaks ? '✓' : '✗'), s.twoPeaks);
+  pill('Sample Both Isomers ' + (s.sampleTwoPeaks ? '✓' : '✗'), s.sampleTwoPeaks);
+  pill('Centroid Protocol #2 ' + (s.anyPeaks ? '✓' : '✗'), s.anyPeaks);
   pill('Has ITP-Cutoff ' + (s.hasCutoff ? '✓' : '✗'), s.hasCutoff);
 }
 
@@ -2791,6 +2916,15 @@ function sevClass(cls) {
 function sevRank(cls) {
   return cls === 'SUSPECT_VERY_HIGH' ? 4 : cls === 'SUSPECT_HIGH' ? 3 : cls === 'SUSPECT_MED' ? 2 : cls === 'SUSPECT_LOW' ? 1 : 0;
 }
+// Display names follow the article's graded verdicts:
+// Negative, Low, Medium, High, Very High Suspicion.
+function verdictLabel(cls) {
+  if (cls === 'SUSPECT_VERY_HIGH') return 'VERY HIGH SUSPICION';
+  if (cls === 'SUSPECT_HIGH') return 'HIGH SUSPICION';
+  if (cls === 'SUSPECT_MED')  return 'MEDIUM SUSPICION';
+  if (cls === 'SUSPECT_LOW')  return 'LOW SUSPICION';
+  return String(cls || '').replace(/_/g, ' ');
+}
 
 // Classify by concentration zones between ITP-Cutoff and the substance concentration.
 // Zones (for cutOff=C, concentration=K, range=K-C):
@@ -2835,9 +2969,9 @@ function updatePipelineFlags(s) {
     el.textContent = text;
     host.appendChild(el);
   }
-  flag('LYNX EYES', s.anyPeaks);
-  flag('DOUBLE PEAK', s.twoPeaks);
-  flag('SAMPLE DOUBLE PEAK', s.sampleTwoPeaks);
+  flag('CENTROID PROTOCOL #2', s.anyPeaks);
+  flag('CO-ELUTING ISOMERS', s.twoPeaks);
+  flag('SAMPLE BOTH ISOMERS', s.sampleTwoPeaks);
   flag('HAS ITP-CUTOFF', s.hasCutoff);
 }
 
@@ -2846,7 +2980,7 @@ function finalize(verdict, reason) {
   const vv = document.getElementById('verdictValue');
   const vr = document.getElementById('verdictReason');
   const box = document.getElementById('finalVerdict');
-  vv.textContent = verdict.replace(/_/g, ' ');
+  vv.textContent = verdictLabel(verdict);
   vv.className = 'verdict-value ' + sevClass(verdict);
   vr.textContent = 'Reason: ' + reason;
   const map = { SUSPECT_VERY_HIGH:'#8e0000', SUSPECT_HIGH:'#d32f2f', SUSPECT_MED:'#e65100', SUSPECT_LOW:'#f57f17', NEGATIVE:'#2e7d32', INVALID:'var(--text-muted)' };
@@ -2857,14 +2991,14 @@ function finalizeTwoPeaks(vA, vB) {
   document.getElementById('verdictPeaksWrap').style.display = 'block';
   const A = document.getElementById('verdictA');
   const B = document.getElementById('verdictB');
-  A.textContent = vA.replace(/_/g, ' '); A.className = 'peak-v ' + sevClass(vA);
-  B.textContent = vB.replace(/_/g, ' '); B.className = 'peak-v ' + sevClass(vB);
+  A.textContent = verdictLabel(vA); A.className = 'peak-v ' + sevClass(vA);
+  B.textContent = verdictLabel(vB); B.className = 'peak-v ' + sevClass(vB);
   const vv = document.getElementById('verdictValue');
   const vr = document.getElementById('verdictReason');
   const box = document.getElementById('finalVerdict');
-  vv.textContent = combined.replace(/_/g, ' ');
+  vv.textContent = verdictLabel(combined);
   vv.className = 'verdict-value ' + sevClass(combined);
-  vr.textContent = 'Combined = max(A,B) = ' + combined.replace(/_/g,' ');
+  vr.textContent = 'Combined = max(A,B) = ' + verdictLabel(combined);
   const map = { SUSPECT_VERY_HIGH:'#8e0000', SUSPECT_HIGH:'#d32f2f', SUSPECT_MED:'#e65100', SUSPECT_LOW:'#f57f17', NEGATIVE:'#2e7d32', INVALID:'var(--text-muted)' };
   box.style.borderColor = map[combined] || 'var(--panel-border)';
 }
@@ -2894,44 +3028,44 @@ function evaluateRange(s, refData, sampleData, lo, hi, prefix) {
   const m = measureRange(refData, sampleData, lo, hi);
   const ratioPQCtoSample = m.smpMax > 0 ? (m.pqcMax / m.smpMax) : Infinity;
 
-  // STEP 1 — DIRECT COMPARISON
-  setStep(prefix, 1, 'PIECE OF CAKE', 'Smp=' + fmtSci(m.smpMax) + ' · PQC=' + fmtSci(m.pqcMax),
+  // STEP 1 — Peak Centroid Comparison (Protocol #1 / Protocol #2)
+  setStep(prefix, 1, 'PEAK CENTROID', 'Smp=' + fmtSci(m.smpMax) + ' · PQC=' + fmtSci(m.pqcMax),
     '—', '', 'on');
 
   // NO-SIGNAL short-circuit — sample at/below baseline has no peak to evaluate
   // → skip all fuzzy/DTW/ITP-cutoff logic and go straight to STEP 5 NEGATIVE.
   if (m.smpMax <= 0) {
-    setStep(prefix, 1, 'PIECE OF CAKE', 'Smp=' + fmtSci(m.smpMax) + ' ≤ 0',
+    setStep(prefix, 1, 'PEAK CENTROID', 'Smp=' + fmtSci(m.smpMax) + ' ≤ 0',
       '✗ no sample signal', 'sev-neg', 'neg');
     for (let i = 2; i <= 4; i++) setStep(prefix, i, stepTitle(i, s), '—', '— skipped', 'sev-neg', 'skip');
-    setStep(prefix, 5, 'NEGATIVE', 'Sample at/below baseline', '→ NEGATIVE', 'sev-neg', 'neg');
+    setStep(prefix, 5, 'NEGATIVE FALLBACK', 'Sample at/below baseline', '→ NEGATIVE', 'sev-neg', 'neg');
     return { verdict: 'NEGATIVE', reason: 'No sample signal · Smp=' + fmtSci(m.smpMax) + ' ≤ 0 (sample at/below baseline)' };
   }
 
   if (m.smpMax > m.pqcMax) {
-    setStep(prefix, 1, 'PIECE OF CAKE', 'Smp=' + fmtSci(m.smpMax) + ' &gt; PQC=' + fmtSci(m.pqcMax),
-      '✓ Sample &gt; PQC → SUSPECT HIGH', 'sev-high', 'pos');
+    setStep(prefix, 1, 'PEAK CENTROID', 'Smp=' + fmtSci(m.smpMax) + ' > PQC=' + fmtSci(m.pqcMax),
+      '✓ Protocol #1 · Sample > PQC → HIGH SUSPICION', 'sev-high', 'pos');
     for (let i = 2; i <= 5; i++) setStep(prefix, i, stepTitle(i, s), '—', '— skipped', 'sev-neg', 'skip');
-    return { verdict: 'SUSPECT_HIGH', reason: 'Sample peak (' + fmtSci(m.smpMax) + ') &gt; PQC peak (' + fmtSci(m.pqcMax) + ')' };
+    return { verdict: 'SUSPECT_HIGH', reason: 'Centroid Protocol #1 · Sample peak (' + fmtSci(m.smpMax) + ') > PQC peak (' + fmtSci(m.pqcMax) + ')' };
   }
   if (s.anyPeaks && isFinite(ratioPQCtoSample) && ratioPQCtoSample <= s.intensityFactor) {
-    setStep(prefix, 1, 'PIECE OF CAKE',
+    setStep(prefix, 1, 'PEAK CENTROID',
       'PQC/Smp=' + ratioPQCtoSample.toFixed(1) + 'x ≤ ' + s.intensityFactor + 'x',
-      '✓ within range → SUSPECT LOW', 'sev-low', 'pos');
+      '✓ Protocol #2 · within factor → LOW SUSPICION', 'sev-low', 'pos');
     for (let i = 2; i <= 5; i++) setStep(prefix, i, stepTitle(i, s), '—', '— skipped', 'sev-neg', 'skip');
-    return { verdict: 'SUSPECT_LOW', reason: 'LYNX EYES · PQC/Sample=' + ratioPQCtoSample.toFixed(1) + 'x ≤ factor=' + s.intensityFactor + 'x' };
+    return { verdict: 'SUSPECT_LOW', reason: 'Centroid Protocol #2 · PQC/Sample=' + ratioPQCtoSample.toFixed(1) + 'x ≤ factor=' + s.intensityFactor + 'x' };
   }
-  setStep(prefix, 1, 'PIECE OF CAKE',
+  setStep(prefix, 1, 'PEAK CENTROID',
     'Smp=' + fmtSci(m.smpMax) + ' · PQC=' + fmtSci(m.pqcMax) + (s.anyPeaks ? ' · ratio=' + (isFinite(ratioPQCtoSample) ? ratioPQCtoSample.toFixed(1) : '∞') + 'x' : ''),
-    'Sample not suspect by PIECE OF CAKE', 'sev-neg', 'neg');
+    'Not resolved by centroid comparison', 'sev-neg', 'neg');
 
   // Helper: if hasCutoff=true, refine the SUSPECT verdict via ITP-Cutoff zones
   // and update Step 4. Returns a refined verdict + reason suffix.
   function refineWithCutoff(baseCls, gateTag) {
     if (!s.hasCutoff) {
       // No cutoff refinement — Step 4 stays skipped
-      setStep(prefix, 4, 'ITP-CUTOFF', '— substance has no ITP-Cutoff', 'skipped', 'sev-neg', 'skip');
-      return { verdict: baseCls, reason: gateTag + ' → ' + baseCls };
+      setStep(prefix, 4, 'ITP-CUTOFF REFINEMENT', '— substance has no ITP-Cutoff', 'skipped', 'sev-neg', 'skip');
+      return { verdict: baseCls, reason: gateTag + ' → ' + verdictLabel(baseCls) };
     }
     const aSmp = m.areaSample.area;
     const aPqc = m.areaPQC.area;
@@ -2939,20 +3073,20 @@ function evaluateRange(s, refData, sampleData, lo, hi, prefix) {
     if (aPqc > 0 && aSmp > 0) estConc = (aSmp / aPqc) * s.concentration;
     const areaInfo = 'Area Smp=' + fmtSci(aSmp) + ' · Area PQC=' + fmtSci(aPqc);
     if (estConc == null) {
-      setStep(prefix, 4, 'ITP-CUTOFF', areaInfo + ' · cannot estimate concentration',
+      setStep(prefix, 4, 'ITP-CUTOFF REFINEMENT', areaInfo + ' · cannot estimate concentration',
         'NEGATIVE (no area)', 'sev-neg', 'neg');
       return { verdict: 'NEGATIVE', reason: gateTag + ' · ITP-Cutoff: no area → NEGATIVE' };
     }
     const zoneCls = classifyByCutoffZones(estConc, s.cutOff, s.concentration);
-    const concInfo = 'Est.Conc=' + estConc.toFixed(2) + ' · Cutoff=' + s.cutOff.toFixed(2) + ' · Conc=' + s.concentration.toFixed(2);
+    const concInfo = 'Ĉ=' + estConc.toFixed(2) + ' · cutoff=' + s.cutOff.toFixed(2) + ' · C_PQC=' + s.concentration.toFixed(2);
     if (zoneCls === 'NEGATIVE' || zoneCls === 'INVALID') {
-      setStep(prefix, 4, 'ITP-CUTOFF', concInfo,
-        (zoneCls === 'NEGATIVE' ? 'below cutoff → NEGATIVE' : 'INVALID config'),
+      setStep(prefix, 4, 'ITP-CUTOFF REFINEMENT', concInfo,
+        (zoneCls === 'NEGATIVE' ? 'Ĉ ≤ cutoff → NEGATIVE (sub-MRL)' : 'INVALID config'),
         'sev-neg', 'neg');
       return { verdict: 'NEGATIVE', reason: gateTag + ' · ITP-Cutoff: ' + concInfo + ' → NEGATIVE' };
     }
-    setStep(prefix, 4, 'ITP-CUTOFF', concInfo, '✓ ' + zoneCls, sevClass(zoneCls), 'pos');
-    return { verdict: zoneCls, reason: gateTag + ' + ITP-Cutoff: ' + concInfo + ' → ' + zoneCls };
+    setStep(prefix, 4, 'ITP-CUTOFF REFINEMENT', concInfo, '✓ ' + verdictLabel(zoneCls), sevClass(zoneCls), 'pos');
+    return { verdict: zoneCls, reason: gateTag + ' + ITP-Cutoff: ' + concInfo + ' → ' + verdictLabel(zoneCls) };
   }
 
   // STEP 2 — R²
@@ -2961,18 +3095,18 @@ function evaluateRange(s, refData, sampleData, lo, hi, prefix) {
   if (m.r2 >= s.r2) {
     const cls = fuzzyR2Classify(m.r2);
     if (cls !== 'NEGATIVE' && cls !== 'INVALID') {
-      setStep(prefix, 2, 'R²', 'R²=' + fmtR2Step(m.r2) + ' ≥ ' + s.r2.toFixed(2), '✓ fuzzy_r2 → ' + cls, sevClass(cls), 'pos');
+      setStep(prefix, 2, 'PSEUDO R²', 'Pseudo R²=' + fmtR2Step(m.r2) + ' ≥ ' + s.r2.toFixed(2), '✓ fuzzy_r2 → ' + verdictLabel(cls), sevClass(cls), 'pos');
       setStep(prefix, 3, stepTitle(3, s), '—', '— skipped', 'sev-neg', 'skip');
-      const gateTag = 'R²=' + fmtR2Step(m.r2) + ' ≥ ' + s.r2.toFixed(2) + ' → fuzzy_r2 = ' + cls;
+      const gateTag = 'Pseudo R²=' + fmtR2Step(m.r2) + ' ≥ ' + s.r2.toFixed(2) + ' → fuzzy_r2 = ' + verdictLabel(cls);
       const refined = refineWithCutoff(cls, gateTag);
       setStep(prefix, 5, stepTitle(5, s), '—', '— skipped', 'sev-neg', 'skip');
       return refined;
     }
-    setStep(prefix, 2, 'R²', 'R²=' + fmtR2Step(m.r2) + ' ≥ ' + s.r2.toFixed(2), 'fuzzy_r2 = ' + cls, 'sev-neg', 'neg');
+    setStep(prefix, 2, 'PSEUDO R²', 'Pseudo R²=' + fmtR2Step(m.r2) + ' ≥ ' + s.r2.toFixed(2), 'fuzzy_r2 = ' + cls, 'sev-neg', 'neg');
     for (let i = 3; i <= 5; i++) setStep(prefix, i, stepTitle(i, s), '—', '— skipped', 'sev-neg', 'skip');
-    return { verdict: 'NEGATIVE', reason: 'R²=' + fmtR2Step(m.r2) + ' → fuzzy_r2 = ' + cls };
+    return { verdict: 'NEGATIVE', reason: 'Pseudo R²=' + fmtR2Step(m.r2) + ' → fuzzy_r2 = ' + verdictLabel(cls) };
   } else {
-    setStep(prefix, 2, 'R²', 'R²=' + fmtR2Step(m.r2) + ' &lt; ' + s.r2.toFixed(2), 'below R² threshold → DTW', 'sev-neg', 'neg');
+    setStep(prefix, 2, 'PSEUDO R²', 'Pseudo R²=' + fmtR2Step(m.r2) + ' < ' + s.r2.toFixed(2), 'below Pseudo R² threshold → DTW gate', 'sev-neg', 'neg');
   }
 
   // STEP 3 — DTW (shape gate: DTW ≤ threshold → still suspect, regardless of R²)
@@ -2980,33 +3114,33 @@ function evaluateRange(s, refData, sampleData, lo, hi, prefix) {
   if (m.dtw <= s.dtw) {
     const cls = fuzzyDtw(m.dtw);
     if (cls !== 'NEGATIVE' && cls !== 'INVALID') {
-      setStep(prefix, 3, 'DTW', 'DTW=' + m.dtw.toFixed(4) + ' ≤ ' + s.dtw.toFixed(2),
-        '✓ fuzzy_dtw → ' + cls, sevClass(cls), 'pos');
-      const gateTag = 'DTW=' + m.dtw.toFixed(4) + ' ≤ ' + s.dtw.toFixed(2) + ' → fuzzy_dtw = ' + cls;
+      setStep(prefix, 3, 'DTW GATE', 'DTW=' + m.dtw.toFixed(4) + ' ≤ ' + s.dtw.toFixed(2),
+        '✓ fuzzy_dtw → ' + verdictLabel(cls), sevClass(cls), 'pos');
+      const gateTag = 'DTW=' + m.dtw.toFixed(4) + ' ≤ ' + s.dtw.toFixed(2) + ' → fuzzy_dtw = ' + verdictLabel(cls);
       const refined = refineWithCutoff(cls, gateTag);
       setStep(prefix, 5, stepTitle(5, s), '—', '— skipped', 'sev-neg', 'skip');
       return refined;
     }
-    setStep(prefix, 3, 'DTW', 'DTW=' + m.dtw.toFixed(4), 'fuzzy_dtw = NEGATIVE', 'sev-neg', 'neg');
+    setStep(prefix, 3, 'DTW GATE', 'DTW=' + m.dtw.toFixed(4), 'fuzzy_dtw = NEGATIVE', 'sev-neg', 'neg');
   } else {
-    setStep(prefix, 3, 'DTW', 'DTW=' + m.dtw.toFixed(4) + ' &gt; ' + s.dtw.toFixed(2),
-      'R² AND DTW both failed', 'sev-neg', 'neg');
+    setStep(prefix, 3, 'DTW GATE', 'DTW=' + m.dtw.toFixed(4) + ' > ' + s.dtw.toFixed(2),
+      'Pseudo R² and DTW gate both failed', 'sev-neg', 'neg');
   }
 
   // Reached here → NEGATIVE; ITP-Cutoff never runs (it refines suspicions, not rejections)
-  setStep(prefix, 4, 'ITP-CUTOFF', '—', '— skipped', 'sev-neg', 'skip');
+  setStep(prefix, 4, 'ITP-CUTOFF REFINEMENT', '—', '— skipped', 'sev-neg', 'skip');
 
-  // STEP 5 — NEGATIVE fallback
-  setStep(prefix, 5, 'NEGATIVE', 'All upstream gates failed', '→ NEGATIVE', 'sev-neg', 'neg');
+  // STEP 5 — Default Negative Fallback
+  setStep(prefix, 5, 'NEGATIVE FALLBACK', 'All upstream gates failed', '→ NEGATIVE', 'sev-neg', 'neg');
   return { verdict: 'NEGATIVE', reason: 'All pipeline gates failed — NEGATIVE' };
 }
 
 function stepTitle(i, s) {
-  if (i === 1) return 'PIECE OF CAKE';
-  if (i === 2) return 'R²';
-  if (i === 3) return 'DTW';
-  if (i === 4) return 'ITP-CUTOFF';
-  return 'NEGATIVE';
+  if (i === 1) return 'PEAK CENTROID';
+  if (i === 2) return 'PSEUDO R²';
+  if (i === 3) return 'DTW GATE';
+  if (i === 4) return 'ITP-CUTOFF REFINEMENT';
+  return 'NEGATIVE FALLBACK';
 }
 
 // ---- Dispatcher: runs on every chromatogram / method change ----
@@ -3014,28 +3148,40 @@ function runPipeline() {
   const s = curr();
   updatePipelineFlags(s);
 
-  const refData = getRefData(s);
-  const sampleData = getSampleData(s);
-
-  // Pre-gate: Final Window Crop — sample peak outside window
+  // Use display data first to locate the PQC peak / crop window…
+  const refDataView = getRefData(s);
+  const sampleDataView = getSampleData(s);
   let pqcIdx = 0, pqcMax = -Infinity;
-  for (let i = 0; i < numPoints; i++) if (refData[i] > pqcMax) { pqcMax = refData[i]; pqcIdx = i; }
-  let smpIdx = 0, smpMax = -Infinity;
-  for (let i = 0; i < numPoints; i++) if (sampleData[i] > smpMax) { smpMax = sampleData[i]; smpIdx = i; }
+  for (let i = 0; i < numPoints; i++) if (refDataView[i] > pqcMax) { pqcMax = refDataView[i]; pqcIdx = i; }
   const cropHalf = Math.max(2, Math.min(1000, s.windowCut|0));
   const cropStart = Math.max(0, pqcIdx - cropHalf);
   const cropEnd   = Math.min(numPoints - 1, pqcIdx + cropHalf);
 
-  if (s.state.cropEnabled && (smpIdx < cropStart || smpIdx > cropEnd)) {
-    // Short-circuit: sample outside window → NEGATIVE
-    buildPipelineStepsUI(1);
-    setStep('', 1, 'FINAL WINDOW CROP',
-      'smpIdx=' + smpIdx + ' · window=[' + cropStart + ',' + cropEnd + ']',
-      '✗ Sample outside window', 'sev-neg', 'neg');
-    for (let i = 2; i <= 5; i++) setStep('', i, stepTitle(i, s), '—', '— skipped', 'sev-neg', 'skip');
-    setStep('', 5, 'NEGATIVE', 'Sample out of window', '→ NEGATIVE', 'sev-neg', 'neg');
-    return finalize('NEGATIVE',
-      'Sample peak at idx=' + smpIdx + ' outside window [' + cropStart + ',' + cropEnd + '] (Final Window Crop)');
+  // …then build EVALUATION data. When Cut is enabled, restrict data generation
+  // strictly to the crop window so no external interferents can leak into
+  // R² / DTW / area calculations through smoothing edges.
+  const refData    = s.state.cropEnabled ? getRefData(s,    { lo: cropStart, hi: cropEnd }) : refDataView;
+  const sampleData = s.state.cropEnabled ? getSampleData(s, { lo: cropStart, hi: cropEnd }) : sampleDataView;
+
+  // Pre-gate: when Cut is enabled, look for the sample peak ONLY inside the crop
+  // window. External interferents (impurities elsewhere on the baseline) cannot
+  // disqualify the analyte — the pipeline only cares about what's at the expected
+  // retention time.
+  if (s.state.cropEnabled) {
+    let inWinMax = -Infinity, inWinIdx = cropStart;
+    for (let i = cropStart; i <= cropEnd; i++) {
+      if (sampleData[i] > inWinMax) { inWinMax = sampleData[i]; inWinIdx = i; }
+    }
+    if (inWinMax <= 0) {
+      buildPipelineStepsUI(1);
+      setStep('', 1, 'FINAL WINDOW CROP',
+        'window=[' + cropStart + ',' + cropEnd + '] · max=' + fmtSci(inWinMax),
+        '✗ No sample signal in window', 'sev-neg', 'neg');
+      for (let i = 2; i <= 5; i++) setStep('', i, stepTitle(i, s), '—', '— skipped', 'sev-neg', 'skip');
+      setStep('', 5, 'NEGATIVE FALLBACK', 'No signal inside window', '→ NEGATIVE', 'sev-neg', 'neg');
+      return finalize('NEGATIVE',
+        'No sample signal inside Final Window Crop [' + cropStart + ',' + cropEnd + ']');
+    }
   }
 
   if (s.twoPeaks) {
@@ -3444,6 +3590,155 @@ function buildTotalTable() {
   document.getElementById('substanceTableTotal').innerHTML = html;
 }
 
+// ============================================================
+// ===== SCALE PROJECTION — interpretation time (VA vs human) =
+// ============================================================
+// Ported from the performance dashboard (with-all-substances view):
+// batch of 20 samples × 274 substances — VA 15 min, Senior 90 min, Junior 140 min.
+const PERF = {
+  vaRate: 80,      // samples/hour
+  senRate: 13.33,
+  junRate: 8.57,
+  senHoursDay: 8,
+  junHoursDay: 8
+};
+let perfChartScale = null;
+let currentVAMode = 8;
+
+function fmtDays(d) {
+  if (d >= 365) return '~' + (d / 365).toFixed(1) + ' year' + (d >= 730 ? 's' : '');
+  if (d >= 30)  return '~' + Math.round(d / 30) + ' month' + (d >= 60 ? 's' : '');
+  return '~' + Math.round(d) + ' days';
+}
+function calcDays(samples, rate, hoursPerDay) { return samples / rate / hoursPerDay; }
+
+function buildScenarioCards(vaHoursDay) {
+  const container = document.getElementById('scenarioCards');
+  if (!container) return;
+  const scenarios = [
+    { samples: 2004,  label: '2,004 Samples (current experiment)' },
+    { samples: 10000, label: '10,000 Samples' },
+    { samples: 50000, label: '50,000 Samples' }
+  ];
+  const borderColors = ['var(--m-green)', 'var(--m-cyan)', 'var(--m-purple)'];
+  const vaLabel = vaHoursDay === 24 ? 'VA (24h/day)' : 'VA (8h/day)';
+  let html = '';
+  scenarios.forEach((sc, i) => {
+    const vaD  = calcDays(sc.samples, PERF.vaRate, vaHoursDay);
+    const senD = calcDays(sc.samples, PERF.senRate, PERF.senHoursDay);
+    const junD = calcDays(sc.samples, PERF.junRate, PERF.junHoursDay);
+    const speedSen = (senD / vaD).toFixed(1);
+    const speedJun = (junD / vaD).toFixed(1);
+    html += '<div class="chart-card" style="text-align:center; border-left:4px solid ' + borderColors[i] + ';">';
+    html += '<h3 style="color:var(--text-muted);font-size:0.85rem;">' + sc.label + '</h3>';
+    html += '<div style="display:flex;justify-content:space-around;margin-top:16px;flex-wrap:wrap;gap:12px;">';
+    html += '<div><div style="font-size:2.2rem;font-weight:800;color:var(--m-green);">' + fmtDays(vaD) + '</div><div style="font-size:0.8rem;color:var(--text-muted);">' + vaLabel + '</div></div>';
+    html += '<div><div style="font-size:2.2rem;font-weight:800;color:var(--accent);">' + fmtDays(senD) + '</div><div style="font-size:0.8rem;color:var(--text-muted);">Senior (8h/day)</div></div>';
+    html += '<div><div style="font-size:2.2rem;font-weight:800;color:var(--m-orange);">' + fmtDays(junD) + '</div><div style="font-size:0.8rem;color:var(--text-muted);">Junior (8h/day)</div></div>';
+    html += '</div>';
+    html += '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--panel-border);color:var(--text-muted);font-size:0.82rem;">';
+    html += 'The VA completes in <strong style="color:var(--m-green);">' + fmtDays(vaD) + '</strong>. ';
+    html += 'The Senior would take <strong>' + fmtDays(senD) + '</strong> (' + speedSen + 'x slower) and the Junior <strong>' + fmtDays(junD) + '</strong> (' + speedJun + 'x slower).';
+    html += '</div></div>';
+  });
+  container.innerHTML = html;
+}
+
+function buildPerfChart(vaHoursDay) {
+  if (typeof Chart === 'undefined') return;
+  const canvas = document.getElementById('perfScaleProjection');
+  if (!canvas) return;
+  if (perfChartScale) { perfChartScale.destroy(); perfChartScale = null; }
+  const gridColor = getMetricsGridColor();
+  const volumes = [100, 500, 1000, 2004, 5000, 10000, 20000, 50000];
+  const vaDays  = volumes.map(v => calcDays(v, PERF.vaRate, vaHoursDay));
+  const senDays = volumes.map(v => calcDays(v, PERF.senRate, 8));
+  const junDays = volumes.map(v => calcDays(v, PERF.junRate, 8));
+  const vaLabelFull = vaHoursDay === 24 ? 'Virtual Analyst (24h/day)' : 'Virtual Analyst (8h/day)';
+  perfChartScale = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: volumes.map(v => v.toLocaleString('en')),
+      datasets: [
+        { label: vaLabelFull, data: vaDays, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 5, pointBackgroundColor: '#22c55e', pointBorderColor: '#fff', pointBorderWidth: 2 },
+        { label: 'Senior Analyst (8h/day)', data: senDays, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 5, pointBackgroundColor: '#3b82f6', pointBorderColor: '#fff', pointBorderWidth: 2 },
+        { label: 'Junior Analyst (8h/day)', data: junDays, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.08)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 5, pointBackgroundColor: '#f59e0b', pointBorderColor: '#fff', pointBorderWidth: 2 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { usePointStyle: true, padding: 20 } },
+        tooltip: {
+          callbacks: {
+            title: function(items) { return items[0].label + ' samples'; },
+            label: function(ctx) { return ctx.dataset.label + ': ' + fmtDays(ctx.raw); }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { color: gridColor }, title: { display: true, text: 'Sample Volume' } },
+        y: { grid: { color: gridColor }, title: { display: true, text: 'Days' }, beginAtZero: true,
+          ticks: { callback: function(v) { return v >= 365 ? (v / 365).toFixed(0) + 'y' : v >= 30 ? Math.round(v / 30) + 'mo' : Math.round(v) + 'd'; } }
+        }
+      }
+    }
+  });
+}
+
+function buildPerfTable(vaHoursDay) {
+  const host = document.getElementById('perfTable');
+  if (!host) return;
+  const vaLabel = vaHoursDay === 24 ? 'Virtual Analyst (24h/day)' : 'Virtual Analyst (8h/day)';
+  const va2004  = calcDays(2004,  PERF.vaRate,  vaHoursDay);
+  const sen2004 = calcDays(2004,  PERF.senRate, 8);
+  const jun2004 = calcDays(2004,  PERF.junRate, 8);
+  const va10k   = calcDays(10000, PERF.vaRate,  vaHoursDay);
+  const sen10k  = calcDays(10000, PERF.senRate, 8);
+  const jun10k  = calcDays(10000, PERF.junRate, 8);
+  const vaAmDay  = PERF.vaRate  * vaHoursDay;
+  const senAmDay = PERF.senRate * 8;
+  const junAmDay = PERF.junRate * 8;
+
+  const sub = document.getElementById('perfTableSubtitle');
+  if (sub) sub.textContent = 'All performance metrics — VA operating ' + vaHoursDay + 'h/day, analysts 8h/day';
+
+  const g = 'style="text-align:center;color:var(--m-green);font-weight:700"';
+  const c = 'style="text-align:center"';
+  const r = 'style="text-align:center;color:var(--m-red);font-weight:700"';
+
+  let html = '<table><thead><tr>';
+  html += '<th>Metric</th><th style="text-align:center">' + vaLabel + '</th>';
+  html += '<th style="text-align:center">Senior Analyst (8h/day)</th>';
+  html += '<th style="text-align:center">Junior Analyst (8h/day)</th></tr></thead><tbody>';
+  html += '<tr><td>Time for 20 samples</td><td ' + g + '>15 min</td><td ' + c + '>90 min (1h30)</td><td ' + c + '>140 min (2h20)</td></tr>';
+  html += '<tr><td>Time per sample</td><td ' + g + '>45 sec</td><td ' + c + '>270 sec (4.5 min)</td><td ' + c + '>420 sec (7 min)</td></tr>';
+  html += '<tr><td>Time per substance</td><td ' + g + '>0.16 sec</td><td ' + c + '>0.99 sec</td><td ' + c + '>1.53 sec</td></tr>';
+  html += '<tr><td>Throughput (samples/hour)</td><td ' + g + '>80</td><td ' + c + '>13.3</td><td ' + c + '>8.6</td></tr>';
+  html += '<tr><td>Throughput (samples/day)</td><td ' + g + '>' + Math.round(vaAmDay).toLocaleString('en') + '</td><td ' + c + '>' + Math.round(senAmDay).toLocaleString('en') + '</td><td ' + c + '>' + Math.round(junAmDay).toLocaleString('en') + '</td></tr>';
+  html += '<tr><td>Speedup (processing/hour)</td><td ' + g + '>1x (ref.)</td><td ' + c + '>6x slower</td><td ' + c + '>9.33x slower</td></tr>';
+  html += '<tr><td>Total time (2,004 samples)</td><td ' + g + '>' + fmtDays(va2004) + '</td><td ' + c + '>' + fmtDays(sen2004) + '</td><td ' + c + '>' + fmtDays(jun2004) + '</td></tr>';
+  html += '<tr><td>Total time (10,000 samples)</td><td ' + g + '>' + fmtDays(va10k) + '</td><td ' + c + '>' + fmtDays(sen10k) + '</td><td ' + c + '>' + fmtDays(jun10k) + '</td></tr>';
+  const econSen = sen10k - va10k;
+  const econJun = jun10k - va10k;
+  html += '<tr><td>Time savings vs VA (10,000 samples)</td><td ' + g + '>—</td>';
+  html += '<td ' + r + '>+' + Math.round(econSen) + ' days</td>';
+  html += '<td ' + r + '>+' + Math.round(econJun) + ' days</td></tr>';
+  html += '</tbody></table>';
+  host.innerHTML = html;
+}
+
+function switchVAMode(hours) {
+  currentVAMode = hours;
+  const b8 = document.getElementById('btnVa8h');
+  const b24 = document.getElementById('btnVa24h');
+  if (b8)  { b8.style.background  = hours === 8  ? 'var(--accent)' : 'transparent'; b8.style.color  = hours === 8  ? '#fff' : 'var(--text-muted)'; }
+  if (b24) { b24.style.background = hours === 24 ? 'var(--accent)' : 'transparent'; b24.style.color = hours === 24 ? '#fff' : 'var(--text-muted)'; }
+  buildScenarioCards(hours);
+  buildPerfChart(hours);
+  buildPerfTable(hours);
+}
+
 function renderMetrics() {
   // Chart.js global defaults (tuned for dark/light readability)
   if (typeof Chart !== 'undefined') {
@@ -3454,6 +3749,9 @@ function renderMetrics() {
   }
   buildTotalCharts();
   buildTotalTable();
+  buildScenarioCards(currentVAMode);
+  buildPerfChart(currentVAMode);
+  buildPerfTable(currentVAMode);
   window.__metricsRendered = true;
 }
 

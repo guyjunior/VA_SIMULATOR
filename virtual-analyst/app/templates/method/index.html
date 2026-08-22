@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Method - Virtual Analyst{% endblock %}
+
+{% block content %}
+<h1>Methods</h1>
+<p class="sub">
+  The method says what to look for and with which parameters. Every run stores a frozen copy
+  of it (the <em>snapshot</em>), so that editing a threshold tomorrow does not change the
+  meaning of yesterday's result.
+</p>
+
+<div class="card">
+  <h3>New method</h3>
+  <form method="post" action="{{ url_for('method.new') }}">
+    <div class="field-row">
+      <div class="field" style="flex: 2 1 240px">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" placeholder="TVII" required>
+      </div>
+      <div class="field">
+        <label for="version">Version</label>
+        <input type="text" id="version" name="version" value="1">
+      </div>
+      <div class="field" style="flex: 0 0 auto; display: flex; align-items: flex-end">
+        <button class="primary" type="submit">Create</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+{% if methods %}
+<div class="card scroll-x">
+  <table>
+    <thead><tr><th>Method</th><th>Version</th><th class="num">Substances</th><th class="num">Groups</th><th class="num">Internal standards</th><th></th></tr></thead>
+    <tbody>
+    {% for method in methods %}
+      <tr>
+        <td><strong>{{ method.name }}</strong></td>
+        <td>{{ method.version }}</td>
+        <td class="num">
+          {{ method.n_substances }}
+          {% if method.n_grouped %}
+            <div class="scan-filter">{{ method.n_individual }} individual · {{ method.n_grouped }} in groups</div>
+          {% endif %}
+        </td>
+        <td class="num">{{ method.n_groups }}</td>
+        <td class="num">{{ method.n_internal_standards }}</td>
+        <td><a class="button small" href="{{ url_for('method.detail', method_id=method.id) }}">Open</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="empty">No methods configured.</p>
+{% endif %}
+{% endblock %}

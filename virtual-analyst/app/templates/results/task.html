@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Results {{ task.batch }} - Virtual Analyst{% endblock %}
+
+{% block content %}
+<h1>Results <span class="badge gray">{{ task.batch }}</span></h1>
+<p class="sub">
+  Open a substance to see its chromatogram. The traces are plotted <strong>already corrected by
+  the CQN</strong> (the negative subtracted point by point, matching on the nearest RT), which
+  is how the pipeline saw them when it decided. The raw data is still in ClickHouse - the
+  "no correction" button shows it.
+</p>
+
+<div class="card">
+  <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:center">
+    {% for row in breakdown %}
+      <span><strong class="res-{{ row.result }}">{{ row.result }}</strong> <span class="badge gray">{{ row.n }}</span></span>
+    {% endfor %}
+    {% if not breakdown %}<span class="empty">No results stored.</span>{% endif %}
+    <span style="margin-left:auto">
+      {% if suspects_only %}
+        <a class="button small" href="{{ url_for('results.task', task_id=task.id) }}">Show all</a>
+      {% else %}
+        <a class="button small" href="{{ url_for('results.task', task_id=task.id, suspects=1) }}">Suspects only</a>
+      {% endif %}
+      <a class="button small" href="{{ url_for('results.export', task_id=task.id) }}">JSON</a>
+      <a class="button small" href="{{ url_for('tasks.detail', task_id=task.id) }}">Status</a>
+    </span>
+  </div>
+</div>
+
+{% for sample_name, rows in by_sample.items() %}
+<h2>{{ sample_name }} <span class="badge gray">{{ rows|length }}</span></h2>
+<div class="card">
+  {% for row in rows %}
+  <details class="subst" id="r{{ row.id }}">
+    <summary>
+      <strong style="min-width:220px">{{ row.substance }}</strong>
+      <span class="res-{{ row.result }}">{{ row.result }}</span>
+      {% if row.result_group %}<span class="badge gray">group: {{ row.result_group }}</span>{% endif %}
+      {% if row.concentration_value is not none %}<span class="badge gray">{{ row.concentration_value }} ng/mL</span>{% endif %}
+      {% if row.result_validation %}<span class="badge ok">analyst: {{ row.result_validation }}</span>{% endif %}
+    </summary>
+
+    <div style="padding: 10px 0 4px">
+      <div class="chart" id="chart{{ row.id }}" data-id="{{ row.id }}"></div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:6px">
+        <button class="small" type="button" onclick="plot({{ row.id }}, false)">CQN corrected</button>
+        <button class="small" type="button" onclick="plot({{ row.id }}, true)">No correction</button>
+        <form method="post" action="{{ url_for('results.validate', result_id=row.id) }}" style="display:flex; gap:6px; margin-left:auto">
+          <select name="result_validation" style="width:auto; font-size:12px; padding:3px">
+            <option value="">analyst reading…</option>
+            {% for validation in validations %}
+              <option value="{{ validation }}" {{ 'selected' if row.result_validation == validation }}>{{ validation }}</option>
+            {% endfor %}
+          </select>
+          <button class="small" type="submit">Record</button>
+        </form>
+      </div>
+    </div>
+  </details>
+  {% endfor %}
+</div>
+{% endfor %}
+
+{% if not by_sample %}
+<p class="empty">
+  Nothing to show. If the task finished with zero results, check the per-sample outcome on the
+  status screen: <code>blocked_by_is_gate</code> aborts a sample before any substance is
+  analysed.
+</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/plotly-3.1.0.min.js') }}"></script>
+<script>
+// Fixed colours per trace: the sample stands out, the controls support it.
+const STYLE = {
+  sample:     { name: 'sample',     color: '#1f6feb', width: 2.2 },
+  cqcl:       { name: 'CQCL',       color: '#b45309', width: 1.4 },
+  cqcl_reinj: { name: 'CQCL_reinj', color: '#8b5cf6', width: 1.2, dash: 'dot' },
+  cqcn:       { name: 'CQN',        color: '#6b7280', width: 1.0, dash: 'dash' },
+};
+
+const plotted = new Set();
+
+// Plotly draws into a canvas, where CSS variables do not reach. Reading the
+// token instead of hard-coding a hex keeps the chart honest in either theme,
+// and keeps the palette defined in exactly one place.
+function themeColor(token, fallback) {
+  return getComputedStyle(document.documentElement).getPropertyValue(token).trim() || fallback;
+}
+
+async function plot(id, raw) {
+  const target = document.getElementById('chart' + id);
+  target.innerHTML = '<span class="empty">loading…</span>';
+
+  const url = "{{ url_for('results.xic', sample_result_id=999999) }}".replace('999999', id) + (raw ? '?raw=1' : '');
+  const data = await (await fetch(url)).json();
+
+  const series = Object.entries(data.traces)
+    .filter(([, trace]) => trace.rt && trace.rt.length)
+    .map(([type, trace]) => ({
+      x: trace.rt, y: trace.intensity, type: 'scatter', mode: 'lines',
+      name: STYLE[type].name,
+      line: { color: STYLE[type].color, width: STYLE[type].width, dash: STYLE[type].dash },
+    }));
+
+  if (!series.length) {
+    target.innerHTML = '<span class="empty">No points stored for this result.</span>';
+    return;
+  }
+
+  Plotly.newPlot(target, series, {
+    margin: { l: 60, r: 12, t: 28, b: 40 },
+    title: { text: data.corrected ? 'corrected by the CQN' : 'raw data, no correction', font: { size: 11 } },
+    // Plotly draws its own grid, and its default assumes a white card.
+    xaxis: { title: 'RT (min)', gridcolor: themeColor('--border', '#dce0e6'), zerolinecolor: themeColor('--border', '#dce0e6') },
+    yaxis: { title: 'intensity', gridcolor: themeColor('--border', '#dce0e6'), zerolinecolor: themeColor('--border', '#dce0e6') },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    font: { color: themeColor('--text', '#1c2430'), size: 11 },
+    legend: { orientation: 'h', y: -0.22 },
+  }, { displayModeBar: false, responsive: true });
+
+  plotted.add(id);
+}
+
+// Plot only when the substance is opened: a large task has hundreds of rows,
+// and fetching every XIC at once would freeze the page.
+document.querySelectorAll('details.subst').forEach(block => {
+  block.addEventListener('toggle', () => {
+    const id = parseInt(block.id.slice(1), 10);
+    if (block.open && !plotted.has(id)) plot(id, false);
+  });
+});
+
+// Charts already on screen when the theme changes would keep the old colour.
+window.addEventListener('themechange', () => {
+  const text = themeColor('--text', '#1c2430');
+  const grid = themeColor('--border', '#dce0e6');
+  plotted.forEach(id => {
+    const target = document.getElementById('chart' + id);
+    if (target && target.data) {
+      Plotly.relayout(target, {
+        'font.color': text,
+        'xaxis.gridcolor': grid, 'xaxis.zerolinecolor': grid,
+        'yaxis.gridcolor': grid, 'yaxis.zerolinecolor': grid,
+      });
+    }
+  });
+});
+
+// A direct link to a substance (#r123) opens and plots it on its own.
+if (location.hash.startsWith('#r')) {
+  const block = document.querySelector(location.hash);
+  if (block) { block.open = true; block.scrollIntoView(); }
+}
+</script>
+{% endblock %}

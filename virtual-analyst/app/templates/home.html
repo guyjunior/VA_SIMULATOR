@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Virtual Analyst</h1>
+<p class="sub">
+  Upload the <code>.raw</code> files, convert them to mzML, store the spectra in ClickHouse and
+  run the analytical pipeline: every sample is compared against the CQCL and the CQCL_reinj,
+  and corrected by the CQN.
+</p>
+
+<div class="grid three">
+  <div class="card">
+    <h3>1. Samples</h3>
+    <p class="sub">Upload the batch files and pick a converter. Conversion and ingestion run
+    in a queue, one at a time.</p>
+    <a class="button" href="{{ url_for('samples.index') }}">Go to samples</a>
+  </div>
+  <div class="card">
+    <h3>2. Method</h3>
+    <p class="sub">Configure substances, internal standards, groups and the IS gate. This is
+    what the pipeline reads for every sample.</p>
+    <a class="button" href="{{ url_for('method.index') }}">Go to method</a>
+  </div>
+  <div class="card">
+    <h3>3. Processing</h3>
+    <p class="sub">Pick N samples and the three controls. Results come out per substance,
+    with the chromatogram behind each row.</p>
+    <a class="button" href="{{ url_for('tasks.new') }}">New analysis</a>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Before the first run</h3>
+  <p class="sub">
+    Start ClickHouse with <code>docker compose up -d</code> and create the schema with
+    <code>py -m app.db.schema</code>. The converter binaries live in
+    <code>external_tools/</code> - see the README.
+  </p>
+</div>
+{% endblock %}

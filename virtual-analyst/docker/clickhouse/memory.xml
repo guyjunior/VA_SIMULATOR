@@ -1,0 +1,15 @@
+<clickhouse>
+    <!-- One batch of spectra_points is tens of millions of rows. The container
+         defaults assume a dedicated server; here ClickHouse shares the machine
+         with Flask, the browser and the converter. These three ceilings avoid
+         MEMORY_LIMIT_EXCEEDED (code 241) during the insert and during the XIC
+         GROUP BY. Raise them if the machine has room to spare. -->
+    <max_server_memory_usage_to_ram_ratio>0.6</max_server_memory_usage_to_ram_ratio>
+    <mark_cache_size>1073741824</mark_cache_size>
+    <profiles>
+        <default>
+            <max_memory_usage>4000000000</max_memory_usage>
+            <max_bytes_before_external_group_by>2000000000</max_bytes_before_external_group_by>
+        </default>
+    </profiles>
+</clickhouse>

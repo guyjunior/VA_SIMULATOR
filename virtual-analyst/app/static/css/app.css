@@ -1,0 +1,268 @@
+/* A bench screen: dense, legible, no decoration. What has to jump out is the
+   result classification - everything else is grey on purpose.
+
+   THEMING, and why the dark palette appears twice
+   -----------------------------------------------
+   There are three states, not two:
+
+     no data-theme attribute   follow the operating system
+     data-theme="light"        the reader chose light
+     data-theme="dark"         the reader chose dark
+
+   The media query is therefore guarded with :not([data-theme="light"]) - a
+   reader on a dark desktop who picks light has to actually get light. And the
+   explicit dark block has to exist separately, so that picking dark works on a
+   light desktop too. Merging the two into one selector list would break one of
+   the directions; the duplication is the point, not an oversight. */
+
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --border: #dce0e6;
+  --text: #1c2430;
+  --muted: #5f6b7a;
+  --accent: #1f6feb;
+  --ok: #17803d;
+  --warn: #b45309;
+  --error: #b91c1c;
+  --suspect-high: #b91c1c;
+  --suspect-med: #c2410c;
+  --suspect-low: #b45309;
+  --negative: #17803d;
+  /* Text that sits ON the accent. White works over the light theme's deeper
+     blue; the dark theme uses a lighter accent, where white falls to 2.5:1. */
+  --on-accent: #ffffff;
+  /* Tells the browser to paint scrollbars, form controls and the canvas around
+     the page in the matching theme. Without it an explicit choice reaches the
+     CSS but not the native widgets, and a light page keeps a dark scrollbar. */
+  color-scheme: light;
+  --radius: 8px;
+  --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+
+/* The operating system decides, unless the reader chose light. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161c;
+    --surface: #1a1f27;
+    --border: #2c333d;
+    --text: #e6eaf0;
+    --muted: #97a3b3;
+    --accent: #58a6ff;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --error: #f85149;
+    --suspect-high: #f85149;
+    --suspect-med: #ff8c42;
+    --suspect-low: #d29922;
+    --negative: #3fb950;
+    --on-accent: #0b1220;
+    color-scheme: dark;
+  }
+}
+/* An explicit choice wins over the operating system, in both directions. */
+:root[data-theme="dark"] {
+  --bg: #12161c;
+  --surface: #1a1f27;
+  --border: #2c333d;
+  --text: #e6eaf0;
+  --muted: #97a3b3;
+  --accent: #58a6ff;
+  --ok: #3fb950;
+  --warn: #d29922;
+  --error: #f85149;
+  --suspect-high: #f85149;
+  --suspect-med: #ff8c42;
+  --suspect-low: #d29922;
+  --negative: #3fb950;
+  --on-accent: #0b1220;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+header.topbar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* The name is a link home, so it has to look like one you can press without
+   looking like the navigation next to it. */
+header.topbar .brand {
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  text-decoration: none;
+  padding: 6px 10px;
+  margin-left: -10px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+header.topbar .brand:hover { border-color: var(--border); background: var(--bg); }
+header.topbar .brand:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+header.topbar nav { display: flex; gap: 4px; }
+
+/* Pushed to the far right of the bar. */
+header.topbar .theme-toggle {
+  margin-left: auto;
+  padding: 5px 10px;
+  font-size: 15px;
+  line-height: 1.2;
+  background: transparent;
+  border-color: transparent;
+}
+header.topbar .theme-toggle:hover { border-color: var(--border); background: var(--bg); color: var(--text); }
+
+header.topbar nav a {
+  color: var(--muted);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+}
+header.topbar nav a:hover { background: var(--bg); color: var(--text); }
+header.topbar nav a.active { color: var(--text); background: var(--bg); font-weight: 600; }
+
+main { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+h1 { font-size: 20px; margin: 0 0 4px; }
+h2 { font-size: 16px; margin: 28px 0 10px; }
+h3 { font-size: 14px; margin: 18px 0 8px; }
+p.sub { color: var(--muted); margin: 0 0 20px; max-width: 78ch; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.grid { display: grid; gap: 16px; }
+.grid.two { grid-template-columns: 1fr 1fr; }
+.grid.three { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 900px) { .grid.two, .grid.three { grid-template-columns: 1fr; } }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+tbody tr:hover { background: var(--bg); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.scroll-x { overflow-x: auto; }
+
+label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+input[type=text], input[type=number], select, textarea, input[type=file] {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.field { margin-bottom: 12px; }
+.field-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.field-row > .field { flex: 1 1 140px; }
+
+button, .button {
+  display: inline-block;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+button:hover, .button:hover { border-color: var(--accent); color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+button.primary:hover { filter: brightness(1.08); color: var(--on-accent); }
+button.danger:hover { border-color: var(--error); color: var(--error); }
+button.small, .button.small { padding: 3px 8px; font-size: 12px; }
+
+.flash {
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  margin-bottom: 10px;
+  background: var(--surface);
+}
+.flash.ok { border-left-color: var(--ok); }
+.flash.error { border-left-color: var(--error); }
+.flash.warning { border-left-color: var(--warn); }
+
+.badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.badge.gray { color: var(--muted); }
+.badge.ok { color: var(--ok); }
+.badge.warning { color: var(--warn); }
+.badge.error { color: var(--error); }
+.badge.working { color: var(--accent); }
+
+.res-SUSPECT_VERY_HIGH, .res-SUSPECT_HIGH { color: var(--suspect-high); font-weight: 650; }
+.res-SUSPECT_MED { color: var(--suspect-med); font-weight: 650; }
+.res-SUSPECT_LOW, .res-SUSPECT { color: var(--suspect-low); font-weight: 650; }
+.res-NEGATIVE { color: var(--negative); }
+.res-NOT_INTERPRETED, .res-INVALID { color: var(--muted); }
+
+/* Without this, a bare <a> in the content keeps the user agent's #0000EE -
+   unreadable on the dark background, and out of place on the light one. */
+main a { color: var(--accent); }
+main a:hover { text-decoration: none; }
+
+code, .mono { font-family: var(--mono); font-size: 12px; }
+.scan-filter { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+.log {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  max-height: 260px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  color: var(--muted);
+}
+
+.chart { height: 320px; width: 100%; }
+
+details.subst { border-bottom: 1px solid var(--border); padding: 6px 0; }
+details.subst summary { cursor: pointer; display: flex; gap: 12px; align-items: center; }
+details.subst summary::-webkit-details-marker { display: none; }
+details.subst summary::before { content: "▸"; color: var(--muted); }
+details.subst[open] summary::before { content: "▾"; }
+
+.sample-list { max-height: 340px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 8px; }
+.sample-list label.item { display: flex; gap: 8px; align-items: center; color: var(--text); font-size: 13px; padding: 3px 4px; margin: 0; }
+.sample-list label.item:hover { background: var(--bg); }
+/* Excluded rows are dimmed by class, not by a raw opacity: 0.45 on top of
+   --muted lands under 3:1 in the light theme. */
+.sample-list label.item.excluded { color: var(--muted); }
+.sample-list input[type=checkbox] { width: auto; margin: 0; }
+.empty { color: var(--muted); font-style: italic; padding: 12px 0; }

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Task {{ task.id }} - Virtual Analyst{% endblock %}
+
+{% block content %}
+<h1>Task {{ task.id }} <span class="badge gray">{{ task.batch }}</span></h1>
+<p class="sub">Method {{ method_name }} · {{ samples|length }} sample(s) · the same controls for all of them.</p>
+
+<div class="grid two">
+  <div class="card">
+    <h3>State <span id="status-badge" class="badge working">{{ task.status }}</span></h3>
+    <p class="sub" style="font-size:12px">
+      <span id="result-count">-</span> row(s) in <code>sample_results</code>.
+      Only an evaluated substance produces a row: <code>INVALID</code> (no peak in the CQCL, or
+      a window with fewer than two points) simply does not appear.
+    </p>
+    <p><a class="button primary" href="{{ url_for('results.task', task_id=task.id) }}">View results</a></p>
+  </div>
+
+  <div class="card">
+    <h3>Controls</h3>
+    <table>
+      <tbody>
+        <tr><td>CQCL</td><td><strong>{{ names.get(task.cqcl_id, task.cqcl_id) }}</strong></td></tr>
+        <tr><td>CQCL_reinj</td><td><strong>{{ names.get(task.cqcl_reinj_id, task.cqcl_reinj_id) }}</strong></td></tr>
+        <tr><td>CQN</td><td><strong>{{ names.get(task.cqn_id, task.cqn_id) }}</strong></td></tr>
+        <tr><td>IS gate</td><td>{{ 'validated' if task.validate_is else 'skipped for this run' }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<h2>Samples</h2>
+<div class="card scroll-x">
+  <table>
+    <thead><tr><th>Sample</th><th>Outcome</th></tr></thead>
+    <tbody id="sample-table">
+    {% for sample_id in samples %}
+      <tr data-name="{{ names.get(sample_id, sample_id) }}">
+        <td>{{ names.get(sample_id, sample_id) }}</td>
+        <td class="outcome">{{ (outcome or {}).get(names.get(sample_id, sample_id), '-') }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="sub" style="font-size:12px">
+  <code>blocked_by_is_gate</code> means the gate's internal standard failed on that sample:
+  nothing was analysed and nothing was stored. That is the difference between "it came out
+  negative" and "there was no way to look".
+</p>
+
+{% if audit and audit.samples %}
+<h2>Internal standards with alerts</h2>
+<div class="card">
+  <p class="sub" style="font-size:12px">{{ audit.Error }}</p>
+  <div class="log">{{ audit.samples | tojson(indent=2) }}</div>
+</div>
+{% endif %}
+
+<h2>Log</h2>
+<div class="log" id="log">-</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CSS = { done: 'ok', error: 'error', processing: 'working', queued: 'gray' };
+
+async function refresh() {
+  const response = await fetch("{{ url_for('tasks.api', task_id=task.id) }}");
+  const data = await response.json();
+
+  const badge = document.getElementById('status-badge');
+  badge.textContent = data.status;
+  badge.className = 'badge ' + (CSS[data.status] || 'gray');
+  document.getElementById('result-count').textContent = data.n_results;
+  document.getElementById('log').textContent = data.log.join('\n') || '-';
+
+  if (data.result) {
+    for (const row of document.querySelectorAll('#sample-table tr')) {
+      const outcome = data.result[row.dataset.name];
+      if (outcome) row.querySelector('.outcome').textContent = outcome;
+    }
+  }
+
+  if (data.status === 'queued' || data.status === 'processing') setTimeout(refresh, 3000);
+}
+refresh();
+</script>
+{% endblock %}

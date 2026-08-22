@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Samples - Virtual Analyst{% endblock %}
+
+{% block content %}
+<h1>Samples</h1>
+<p class="sub">
+  Every uploaded file becomes a sample. Conversion and ingestion run in a queue with a single
+  worker - in parallel they would fight over ClickHouse memory, which answers that with an
+  error rather than with slowness.
+</p>
+
+<div class="card">
+  <h3>Upload files</h3>
+  <form method="post" action="{{ url_for('samples.upload') }}" enctype="multipart/form-data">
+    <div class="field-row">
+      <div class="field" style="flex: 2 1 220px">
+        <label for="batch">Batch</label>
+        <input type="text" id="batch" name="batch" placeholder="20260812_0442_26" required>
+      </div>
+      <div class="field">
+        <label for="screening">Screening (optional)</label>
+        <input type="text" id="screening" name="screening" placeholder="TVII">
+      </div>
+      <div class="field">
+        <label for="converter">Converter</label>
+        <select id="converter" name="converter">
+          <option value="auto">Automatic (recommended)</option>
+          <option value="thermo_raw_file_parser">ThermoRawFileParser</option>
+          <option value="msconvert">msconvert</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label for="files">Files (.raw, .mzML, .wiff, .lcd) - you can select several</label>
+      <input type="file" id="files" name="files" multiple required>
+    </div>
+    <p class="sub" style="font-size:12px">
+      On automatic, a Thermo <code>.raw</code> goes to ThermoRawFileParser with <code>-x</code>,
+      and everything else to msconvert. The <code>-x</code> flag excludes the exception data
+      (lock mass, AGC overflow, internal calibration) that msconvert keeps in the mzML - it is
+      not analyte, and it turns into false positives in the pipeline.
+    </p>
+    <button class="primary" type="submit">Upload and process</button>
+  </form>
+</div>
+
+<h2>Batches <span id="queued" class="badge gray">{{ queued }} queued</span></h2>
+{% if batches %}
+<div class="card scroll-x">
+  <table>
+    <thead><tr><th>Batch</th><th>Screening</th><th class="num">Samples</th><th class="num">Ready</th><th class="num">Failed</th><th>Uploaded</th></tr></thead>
+    <tbody>
+    {% for batch in batches %}
+      <tr>
+        <td><code>{{ batch.path.split('/')[-1].split('\\')[-1] }}</code></td>
+        <td>{{ batch.screening or '-' }}</td>
+        <td class="num">{{ batch.total }}</td>
+        <td class="num">{{ batch.ready or 0 }}</td>
+        <td class="num">{{ batch.failed or 0 }}</td>
+        <td>{{ batch.created_at }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="empty">No batches yet.</p>
+{% endif %}
+
+<h2>Files</h2>
+{% if samples %}
+<div class="card scroll-x">
+  <table>
+    <thead>
+      <tr><th>Sample</th><th>Batch</th><th>Status</th><th>Converter</th><th>Note</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for sample in samples %}
+      <tr data-sample="{{ sample.id }}">
+        <td>
+          {{ sample.name }}
+          {% if sample.is_control %}<span class="badge gray">control</span>{% endif %}
+        </td>
+        <td><code>{{ sample.batch }}</code></td>
+        <td class="status-cell">
+          {% set css = {'ready':'ok','error':'error','skipped':'warning','pending':'gray'}.get(sample.status, 'working') %}
+          <span class="badge {{ css }}">{{ sample.status }}</span>
+        </td>
+        <td>{{ sample.converter or '-' }}</td>
+        <td class="error-cell" style="max-width: 420px; color: var(--muted); font-size: 12px">{{ sample.error or '' }}</td>
+        <td style="white-space: nowrap">
+          <form method="post" action="{{ url_for('samples.reprocess', sample_id=sample.id) }}" style="display:inline">
+            <select name="converter" class="small" style="width:auto; font-size:12px; padding:3px">
+              <option value="auto">auto</option>
+              <option value="thermo_raw_file_parser">TRFP</option>
+              <option value="msconvert">msconvert</option>
+            </select>
+            <button class="small" type="submit">Reprocess</button>
+          </form>
+          <form method="post" action="{{ url_for('samples.delete', sample_id=sample.id) }}" style="display:inline"
+                onsubmit="return confirm('Remove {{ sample.name }} and all of its points?')">
+            <button class="small danger" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="empty">No files uploaded yet.</p>
+{% endif %}
+
+<h2>Processing log</h2>
+<div class="log" id="log">-</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// While any sample is in flight the page asks for status. Once everything
+// settles the polling stops on its own - there is no reason to hit the database
+// every 3s on an idle screen.
+const IN_FLIGHT = ['pending', 'converting', 'ingesting'];
+const CSS = { ready: 'ok', error: 'error', skipped: 'warning', pending: 'gray' };
+
+async function refresh() {
+  const response = await fetch("{{ url_for('samples.api_status') }}");
+  const data = await response.json();
+
+  document.getElementById('queued').textContent = data.queued + ' queued';
+  document.getElementById('log').textContent = data.log.join('\n') || '-';
+
+  let working = data.queued > 0;
+  for (const sample of data.samples) {
+    const row = document.querySelector(`tr[data-sample="${sample.id}"]`);
+    if (!row) continue;
+    const css = CSS[sample.status] || 'working';
+    row.querySelector('.status-cell').innerHTML = `<span class="badge ${css}">${sample.status}</span>`;
+    row.querySelector('.error-cell').textContent = sample.error || '';
+    if (IN_FLIGHT.includes(sample.status)) working = true;
+  }
+  if (working) setTimeout(refresh, 3000);
+}
+refresh();
+</script>
+{% endblock %}

@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% block title %}{{ method.name }} - Virtual Analyst{% endblock %}
+
+{% block content %}
+<h1>{{ method.name }} <span class="badge gray">v{{ method.version }}</span></h1>
+<p class="sub">
+  Three fields usually explain an empty result: the <strong>scan filter</strong>, which matches
+  the text seen in the mzML string for string; the <strong>RT window</strong>, outside of which
+  there is no chromatogram; and the <strong>analysis rule</strong>. A substance with no peak in
+  the CQCL comes out <code>INVALID</code> - and INVALID produces no result row.
+</p>
+
+<h2>Substances and internal standards</h2>
+{% if substances %}
+<div class="card scroll-x">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th><th>Type</th><th>Rule</th>
+        <th class="num">m/z</th><th class="num">ppm</th><th class="num">RT</th>
+        <th class="num">R²</th><th class="num">DTW</th><th class="num">Cut-off</th>
+        <th>Flags</th><th>Scan filter</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for s in substances %}
+      <tr>
+        <td>
+          <strong>{{ s.name }}</strong>
+          {% if s.id == gate_id %}<span class="badge warning" title="If this internal standard fails, the whole sample is aborted">IS gate</span>{% endif %}
+        </td>
+        <td>{{ 'IS' if s.type == 'internal_standard' else 'substance' }}</td>
+        <td>{{ s.analysis_rule_code or 'standard' }}</td>
+        <td class="num mono">{{ '%.5f'|format(s.mz) }}</td>
+        <td class="num">{{ s.mass_error_ppm }}</td>
+        <td class="num">{{ s.start_time }}-{{ s.end_time }}</td>
+        <td class="num">{{ s.r2_threshold if s.r2_threshold is not none else '-' }}</td>
+        <td class="num">{{ s.dtw_limit if s.dtw_limit is not none else '-' }}</td>
+        <td class="num">{{ s.cut_off if s.cut_off is not none else '-' }}</td>
+        <td>
+          {% if s.competition %}<span class="badge gray">competition</span>{% endif %}
+          {% if s.beta_blocker %}<span class="badge gray">β-blocker</span>{% endif %}
+        </td>
+        <td class="scan-filter" style="max-width:260px; overflow:hidden; text-overflow:ellipsis" title="{{ s.scan_filter }}">{{ s.scan_filter or '-' }}</td>
+        <td style="white-space:nowrap">
+          <button class="small" type="button" onclick='edit({{ s|tojson }})'>Edit</button>
+          <form method="post" action="{{ url_for('method.delete_substance', method_id=method.id, substance_id=s.id) }}" style="display:inline"
+                onsubmit="return confirm('Remove {{ s.name }} from the method?')">
+            <button class="small danger" type="submit">Remove</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="empty">No substances configured.</p>
+{% endif %}
+
+<div class="card">
+  <h3 id="substance-form">Create / edit substance</h3>
+  <form method="post" action="{{ url_for('method.save_substance', method_id=method.id) }}" id="form-substance">
+    <input type="hidden" name="id" id="f-id">
+
+    <div class="field-row">
+      <div class="field" style="flex: 2 1 220px">
+        <label for="f-name">Name</label>
+        <input type="text" id="f-name" name="name" required>
+      </div>
+      <div class="field">
+        <label for="f-type">Type</label>
+        <select id="f-type" name="type">
+          <option value="substance">Substance</option>
+          <option value="internal_standard">Internal standard</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-rule">Analysis rule</label>
+        <select id="f-rule" name="analysis_rule_id">
+          <option value="">(standard)</option>
+          {% for rule in rules %}<option value="{{ rule.id }}">{{ rule.code }} - {{ rule.name }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="f-mz">Exact m/z</label>
+        <input type="text" id="f-mz" name="mz" placeholder="279.147505" required>
+      </div>
+      <div class="field">
+        <label for="f-ppm">Mass error (ppm)</label>
+        <input type="text" id="f-ppm" name="mass_error_ppm" value="6">
+      </div>
+      <div class="field">
+        <label for="f-start">RT start (min)</label>
+        <input type="text" id="f-start" name="start_time" required>
+      </div>
+      <div class="field">
+        <label for="f-end">RT end (min)</label>
+        <input type="text" id="f-end" name="end_time" required>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="f-scan">Scan filter - use exactly the text seen in the mzML</label>
+      <input type="text" id="f-scan" name="scan_filter" list="observed-filters"
+             placeholder="FTMS + p ESI Full ms [100.0000-670.0000]">
+      <datalist id="observed-filters">
+        {% for filter in observed_filters %}<option value="{{ filter }}">{% endfor %}
+      </datalist>
+      {% if not observed_filters %}
+      <p class="sub" style="font-size:12px; margin-top:4px">
+        No filters observed yet - this list fills itself in once the first sample is ingested.
+      </p>
+      {% endif %}
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="f-r2">R² threshold</label>
+        <input type="text" id="f-r2" name="r2_threshold" placeholder="0.8">
+      </div>
+      <div class="field">
+        <label for="f-dtw">DTW limit</label>
+        <input type="text" id="f-dtw" name="dtw_limit" placeholder="2.5">
+      </div>
+      <div class="field">
+        <label for="f-any">Ratio (any_points rule)</label>
+        <input type="text" id="f-any" name="any_points_ratio_limit">
+      </div>
+      <div class="field">
+        <label for="f-smoothing-type">Smoothing (0 none, 1 boxcar, 2 gaussian)</label>
+        <input type="text" id="f-smoothing-type" name="smoothing_type" value="2">
+      </div>
+      <div class="field">
+        <label for="f-smoothing-value">Smoothing points</label>
+        <input type="text" id="f-smoothing-value" name="smoothing_value" value="7">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="f-cutoff">Cut-off (leave empty if there is none)</label>
+        <input type="text" id="f-cutoff" name="cut_off">
+      </div>
+      <div class="field">
+        <label for="f-fortified">CQCL fortified concentration</label>
+        <input type="text" id="f-fortified" name="fortified_concentration">
+      </div>
+      <div class="field" style="display:flex; gap:16px; align-items:flex-end">
+        <label style="display:flex; gap:6px; align-items:center; color:var(--text)">
+          <input type="checkbox" id="f-competition" name="competition" style="width:auto"> in-competition only
+        </label>
+        <label style="display:flex; gap:6px; align-items:center; color:var(--text)">
+          <input type="checkbox" id="f-beta" name="beta_blocker" style="width:auto"> β-blocker
+        </label>
+      </div>
+    </div>
+
+    <button class="primary" type="submit">Save</button>
+    <button type="button" onclick="clearForm()">Clear</button>
+  </form>
+</div>
+
+<div class="grid two">
+  <div class="card">
+    <h3>IS gate</h3>
+    <p class="sub" style="font-size:12px">
+      The internal standard that locks everything: if it fails on a sample, the pipeline aborts
+      that sample (<code>blocked_by_is_gate</code>) and stores no results at all. There is no
+      point looking for substances in a run that did not work. The other internal standards
+      only raise alerts.
+    </p>
+    <form method="post" action="{{ url_for('method.set_gate', method_id=method.id) }}">
+      <div class="field">
+        <select name="internal_standard">
+          <option value="">(none - nothing blocks)</option>
+          {% for s in substances if s.type == 'internal_standard' %}
+            <option value="{{ s.id }}" {{ 'selected' if s.id == gate_id }}>{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit">Set</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Substance groups</h3>
+    <p class="sub" style="font-size:12px">
+      Fragments of the same molecule. In competition the group is suspect if <em>any</em> member
+      is; out of competition, only if <em>all</em> of them are.
+    </p>
+    {% if groups %}
+    <table>
+      <tbody>
+      {% for group in groups %}
+        <tr>
+          <td>{{ group.name or 'Group %d'|format(group.id) }}<br><span class="scan-filter">{{ group.members }}</span></td>
+          <td style="width:1%">
+            <form method="post" action="{{ url_for('method.delete_group', method_id=method.id, group_id=group.id) }}"
+                  onsubmit="return confirm('Remove this group?')">
+              <button class="small danger" type="submit">Remove</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    <form method="post" action="{{ url_for('method.save_group', method_id=method.id) }}" style="margin-top:12px">
+      <div class="field">
+        <label for="group-name">Group name (optional)</label>
+        <input type="text" id="group-name" name="name">
+      </div>
+      <div class="field">
+        <label>Members (two or more)</label>
+        <div class="sample-list" style="max-height:180px">
+          {% for s in substances if s.type == 'substance' %}
+            <label class="item"><input type="checkbox" name="members" value="{{ s.id }}"> {{ s.name }}</label>
+          {% endfor %}
+        </div>
+      </div>
+      <button type="submit">Create group</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function edit(s) {
+  document.getElementById('f-id').value = s.id;
+  document.getElementById('f-name').value = s.name;
+  document.getElementById('f-type').value = s.type;
+  document.getElementById('f-rule').value = s.analysis_rule_id || '';
+  document.getElementById('f-mz').value = s.mz;
+  document.getElementById('f-ppm').value = s.mass_error_ppm;
+  document.getElementById('f-start').value = s.start_time;
+  document.getElementById('f-end').value = s.end_time;
+  document.getElementById('f-scan').value = s.scan_filter || '';
+  document.getElementById('f-r2').value = s.r2_threshold ?? '';
+  document.getElementById('f-dtw').value = s.dtw_limit ?? '';
+  document.getElementById('f-any').value = s.any_points_ratio_limit ?? '';
+  document.getElementById('f-smoothing-type').value = s.smoothing_type;
+  document.getElementById('f-smoothing-value').value = s.smoothing_value;
+  document.getElementById('f-cutoff').value = s.cut_off ?? '';
+  document.getElementById('f-fortified').value = s.fortified_concentration ?? '';
+  document.getElementById('f-competition').checked = !!s.competition;
+  document.getElementById('f-beta').checked = !!s.beta_blocker;
+  document.getElementById('substance-form').scrollIntoView({ behavior: 'smooth' });
+}
+
+function clearForm() {
+  document.getElementById('form-substance').reset();
+  document.getElementById('f-id').value = '';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,20 @@
+# Web
+Flask==3.1.0
+python-dotenv==1.0.1
+
+# Databases
+clickhouse-connect==0.8.15
+
+# Reading mzML
+pyteomics==4.7.5
+lxml==5.3.0
+
+# The numeric core of the pipeline. This combination was validated against the
+# original stack on two real batches, substance by substance, within a 1e-6
+# tolerance - so an upgrade here is a change to the results, not just to a
+# dependency.
+numpy>=2.0
+pandas>=2.2
+scipy>=1.13
+scikit-learn>=1.5
+dtaidistance>=2.3.12

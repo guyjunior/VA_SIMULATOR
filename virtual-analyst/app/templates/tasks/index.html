@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Processing - Virtual Analyst{% endblock %}
+
+{% block content %}
+<h1>Processing runs</h1>
+<p class="sub">Each row is one run of the pipeline over a set of samples.</p>
+
+<p><a class="button primary" href="{{ url_for('tasks.new') }}">New analysis</a></p>
+
+{% if tasks %}
+<div class="card scroll-x">
+  <table>
+    <thead>
+      <tr><th>#</th><th>Batch</th><th>Status</th><th class="num">Results</th><th class="num">Suspects</th><th>Created</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for task in tasks %}
+      <tr>
+        <td>{{ task.id }}</td>
+        <td><code>{{ task.batch }}</code></td>
+        <td>
+          {% set css = {'done':'ok','error':'error','processing':'working','queued':'gray'}.get(task.status,'gray') %}
+          <span class="badge {{ css }}">{{ task.status }}</span>
+        </td>
+        <td class="num">{{ task.n_results }}</td>
+        <td class="num">{{ task.n_suspects }}</td>
+        <td>{{ task.created_at }}</td>
+        <td style="white-space:nowrap">
+          <a class="button small" href="{{ url_for('tasks.detail', task_id=task.id) }}">Status</a>
+          <a class="button small" href="{{ url_for('results.task', task_id=task.id) }}">Results</a>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="empty">No processing runs yet.</p>
+{% endif %}
+{% endblock %}

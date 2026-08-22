@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+.env
+
+# Data and runtime artefacts - none of this is source.
+data/uploads/
+data/mzml/
+data/tmp_raw/
+data/*.sqlite
+data/*.sqlite-wal
+data/*.sqlite-shm
+log/*.log

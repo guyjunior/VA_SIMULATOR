@@ -1,0 +1,24 @@
+ProteoWizard msconvert — License Notice
+========================================
+
+The binaries in this directory are part of the ProteoWizard project, a
+cross-platform toolkit for mass spectrometry data analysis developed by
+the MacCoss Lab at University of Washington.
+
+License:    Apache License, Version 2.0
+Source:     https://github.com/ProteoWizard/pwiz
+Website:    https://proteowizard.sourceforge.io/
+Full text:  https://www.apache.org/licenses/LICENSE-2.0
+
+Some bundled DLLs (vendor readers) are proprietary libraries from the
+respective instrument manufacturers (Thermo Fisher, Waters, Agilent,
+Bruker, Sciex, Shimadzu). Each vendor library is distributed under its
+own license terms — typically permitting redistribution for the purpose
+of reading their data formats. See the ProteoWizard website for the
+full list of vendor agreements.
+
+Citation
+--------
+Chambers MC, et al. "A cross-platform toolkit for mass spectrometry and
+proteomics." Nature Biotechnology 30, 918-920 (2012).
+DOI: 10.1038/nbt.2377

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Virtual Analyst{% endblock %}</title>
+
+  {#
+    This runs before the stylesheet paints, on purpose. Reading the stored
+    choice after the first paint would show the wrong theme for a frame - the
+    white flash everyone recognises. Nothing else belongs in here.
+
+    No stored choice means no attribute, which means the operating system
+    decides. See the theming comment in app.css.
+  #}
+  <script>
+    (function () {
+      try {
+        var chosen = localStorage.getItem("theme");
+        if (chosen === "dark" || chosen === "light") {
+          document.documentElement.setAttribute("data-theme", chosen);
+        }
+      } catch (e) {
+        /* Private mode, or storage disabled: fall back to the OS preference. */
+      }
+    })();
+  </script>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{{ url_for('home') }}" title="Virtual Analyst - home">Virtual&nbsp;Analyst</a>
+    <nav>
+      <a href="{{ url_for('samples.index') }}" class="{{ 'active' if request.blueprint == 'samples' }}">Samples</a>
+      <a href="{{ url_for('method.index') }}"  class="{{ 'active' if request.blueprint == 'method' }}">Method</a>
+      <a href="{{ url_for('tasks.index') }}"   class="{{ 'active' if request.blueprint in ('tasks', 'results') }}">Processing</a>
+    </nav>
+    <button class="theme-toggle" id="theme-toggle" type="button"
+            title="Theme: following the system" aria-label="Theme: following the system">◐</button>
+  </header>
+
+  <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <script>
+    // Three states, cycled in this order: follow the system, light, dark.
+    //
+    // A two-state toggle looks simpler and quietly removes an option: once you
+    // press it, there is no way back to "whatever the machine is doing", which
+    // is the state the stylesheet is actually built around. So the cycle
+    // returns to it.
+    (function () {
+      var root = document.documentElement;
+      var button = document.getElementById("theme-toggle");
+      var ORDER = ["system", "light", "dark"];
+      var FACE = {
+        system: { icon: "\u25D0", label: "Theme: following the system" },
+        light:  { icon: "\u2600", label: "Theme: light" },
+        dark:   { icon: "\u263E", label: "Theme: dark" }
+      };
+
+      function stored() {
+        try {
+          var value = localStorage.getItem("theme");
+          return ORDER.indexOf(value) > 0 ? value : "system";
+        } catch (e) {
+          return "system";
+        }
+      }
+
+      function apply(state) {
+        if (state === "system") {
+          root.removeAttribute("data-theme");
+        } else {
+          root.setAttribute("data-theme", state);
+        }
+        var face = FACE[state];
+        button.textContent = face.icon;
+        button.title = face.label + " - click to change";
+        button.setAttribute("aria-label", face.label);
+        // CSS variables do not reach inside a canvas, so anything already
+        // drawn with theme colours has to be told.
+        window.dispatchEvent(new CustomEvent("themechange"));
+      }
+
+      button.addEventListener("click", function () {
+        var next = ORDER[(ORDER.indexOf(stored()) + 1) % ORDER.length];
+        try { localStorage.setItem("theme", next); } catch (e) { /* not fatal */ }
+        apply(next);
+      });
+
+      // While no explicit choice is stored, follow the machine as it changes.
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+        if (stored() === "system") apply("system");
+      });
+
+      apply(stored());
+    })();
+  </script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

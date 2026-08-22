@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}New analysis - Virtual Analyst{% endblock %}
+
+{% block content %}
+<h1>New analysis</h1>
+<p class="sub">
+  Pick the samples and the three controls. Every sample is processed against all three at once:
+  the <strong>CQCL</strong> is the reference (where and how the substance shows up), the
+  <strong>CQCL_reinj</strong> is the second chance when the CQCL comes out negative, and the
+  <strong>CQN</strong> is the baseline, subtracted from the others before the comparison.
+</p>
+
+<form method="post" action="{{ url_for('tasks.create') }}" id="form-task">
+  <div class="card">
+    <div class="field-row">
+      <div class="field" style="flex: 2 1 260px">
+        <label for="method_id">Method</label>
+        <select id="method_id" name="method_id" required>
+          <option value="">Select…</option>
+          {% for method in methods %}
+            <option value="{{ method.id }}">{{ method.name }} v{{ method.version }} - {{ method.n_substances }} substance(s)</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="batch">Batch label (optional)</label>
+        <input type="text" id="batch" name="batch" placeholder="defaults to the samples' batch">
+      </div>
+      <div class="field" style="display:flex; align-items:flex-end">
+        <label style="display:flex; gap:6px; align-items:center; color:var(--text)">
+          <input type="checkbox" name="validate_is" value="1" checked style="width:auto">
+          validate internal standards (IS gate)
+        </label>
+      </div>
+    </div>
+    {% if not methods %}
+      <p class="flash error">No method configured - <a href="{{ url_for('method.index') }}">create one first</a>.</p>
+    {% endif %}
+  </div>
+
+  <div class="grid two">
+    <div class="card">
+      <h3>Samples to analyse</h3>
+      <p class="sub" style="font-size:12px">
+        Only samples with status <code>ready</code> can be picked. Ticking a sample that is also
+        chosen as a control is rejected on submit.
+      </p>
+      {% if batches %}
+        <div style="margin-bottom:8px">
+          <button type="button" class="small" onclick="checkAll(true)">Select ready</button>
+          <button type="button" class="small" onclick="checkAll(false)">Clear</button>
+          <span id="counter" class="badge gray">0 selected</span>
+        </div>
+        <div class="sample-list">
+          {% for batch, items in batches.items() %}
+            <div style="margin: 8px 0 4px; font-weight:600; font-size:12px; color:var(--muted)">{{ batch }}</div>
+            {% for sample in items %}
+              <label class="item">
+                <input type="checkbox" name="samples" value="{{ sample.id }}" class="chk-sample"
+                       data-name="{{ sample.name }}" {{ 'disabled' if sample.status != 'ready' }}>
+                {{ sample.name }}
+                {% if sample.status != 'ready' %}<span class="badge gray">{{ sample.status }}</span>{% endif %}
+              </label>
+            {% endfor %}
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="empty">No samples ingested - <a href="{{ url_for('samples.index') }}">upload the files</a>.</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h3>Controls</h3>
+      <p class="sub" style="font-size:12px">
+        All three are required. With no CQCL there is nothing to compare against, and with no
+        CQN there is no matrix correction.
+      </p>
+
+      {% macro picker(field, label, hint) %}
+      <div class="field">
+        <label for="{{ field }}">{{ label }} <span style="text-transform:none">- {{ hint }}</span></label>
+        <select id="{{ field }}" name="{{ field }}" class="sel-control" required>
+          <option value="">Select…</option>
+          {% for batch, items in batches.items() %}
+            <optgroup label="{{ batch }}">
+              {% for sample in items if sample.status == 'ready' %}
+                <option value="{{ sample.id }}" data-name="{{ sample.name }}">{{ sample.name }}</option>
+              {% endfor %}
+            </optgroup>
+          {% endfor %}
+        </select>
+      </div>
+      {% endmacro %}
+
+      {{ picker('cqcl_id', 'CQCL', 'positive control, the reference') }}
+      {{ picker('cqcl_reinj_id', 'CQCL_reinj', 'reinjection, the fallback') }}
+      {{ picker('cqn_id', 'CQN', 'negative control, the baseline') }}
+
+      <button type="button" class="small" onclick="guessControls()">Guess from names</button>
+      <p id="control-warning" class="sub" style="font-size:12px; color:var(--warn)"></p>
+    </div>
+  </div>
+
+  <button class="primary" type="submit">Process</button>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const boxes = () => [...document.querySelectorAll('.chk-sample')];
+const pickers = () => [...document.querySelectorAll('.sel-control')];
+
+function count() {
+  const n = boxes().filter(b => b.checked).length;
+  document.getElementById('counter').textContent = n + (n === 1 ? ' selected' : ' selected');
+}
+
+function checkAll(value) {
+  boxes().forEach(b => { if (!b.disabled) b.checked = value; });
+  sync();
+}
+
+// A sample chosen as a control cannot also be in the analysis list - the server
+// rejects it, so the screen unticks it before letting you submit.
+function sync() {
+  const controlIds = pickers().map(p => p.value).filter(Boolean);
+  boxes().forEach(box => {
+    if (controlIds.includes(box.value)) box.checked = false;
+    box.parentElement.classList.toggle('excluded', controlIds.includes(box.value));
+  });
+
+  const warning = document.getElementById('control-warning');
+  const cqcl = document.getElementById('cqcl_id').value;
+  const reinj = document.getElementById('cqcl_reinj_id').value;
+  const cqn = document.getElementById('cqn_id').value;
+  if (cqn && (cqn === cqcl || cqn === reinj)) {
+    warning.textContent = 'The CQN cannot be the same file as a CQCL - it is the baseline.';
+  } else if (cqcl && cqcl === reinj) {
+    warning.textContent = 'CQCL_reinj is the same as the CQCL: the fallback would re-evaluate the same data.';
+  } else {
+    warning.textContent = '';
+  }
+  count();
+}
+
+// A guess from the name prefix, in the order the controls usually appear. It is
+// only a shortcut: whoever is looking at the screen decides.
+function guessControls() {
+  const options = [...document.querySelectorAll('#cqcl_id option')].filter(o => o.value);
+  const find = (pattern) => (options.find(o => pattern.test(o.dataset.name.toUpperCase())) || {}).value || '';
+  document.getElementById('cqcl_reinj_id').value = find(/^CQCL[_\s-]*REINJ/);
+  document.getElementById('cqcl_id').value = find(/^CQCL(?![_\s-]*REINJ)/);
+  document.getElementById('cqn_id').value = find(/^CQN/);
+  sync();
+}
+
+document.addEventListener('change', (event) => {
+  if (event.target.matches('.sel-control, .chk-sample')) sync();
+});
+
+document.getElementById('form-task').addEventListener('submit', (event) => {
+  if (boxes().filter(b => b.checked).length === 0) {
+    event.preventDefault();
+    alert('Select at least one sample.');
+  }
+});
+
+sync();
+</script>
+{% endblock %}

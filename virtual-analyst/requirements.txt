@@ -18,3 +18,8 @@ pandas>=2.2
 scipy>=1.13
 scikit-learn>=1.5
 dtaidistance>=2.3.12
+
+# Mamdani fuzzy inference engine (Section 2.7 of the article): membership
+# functions, rule base and centroid defuzzification. Pinned to the version
+# used in production during the evaluation period (tag v1.0-evaluated).
+scikit-fuzzy==0.5.0

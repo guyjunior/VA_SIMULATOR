@@ -343,9 +343,20 @@ Upload `.raw` files, convert them to mzML, store the spectra in ClickHouse and r
 anti-doping analytical pipeline: every sample is compared against the **CQCL** and the
 **CQCL_reinj**, and corrected by the **CQN**.
 
-A standalone app - it does not depend on the production API, MariaDB or ClickHouse. What
-came from there is the **code**: the conversion, the XIC extraction and the chemistry
-pipeline are faithful ports, not reimplementations.
+A standalone app - it does not depend on the production API, MariaDB or ClickHouse. The
+conversion and the XIC extraction are ports of the laboratory's code. **The interpretation
+steps implement the method as described in the article** (Sections 2.3 and 2.5-2.8,
+Table 1, Eq. 4) and live in one file, [`app/services/article_pipeline.py`](virtual-analyst/app/services/article_pipeline.py):
+
+| Step | What it does |
+|---|---|
+| Pre-processing | 3000-point grid; 7-point smoothing with the MSFileReader-equivalent kernel (per substance); ±6 ppm; NQC subtraction; evaluation inside the substance's RT window (0.8 min). |
+| 1 - Centroid protocols | Protocol #1: sample above the PQC -> **High**. Protocol #2 (no-MRL substances, "any points"): PQC/sample ≤ 100 -> **Low**. Two-peak rule for co-eluting isomers. |
+| 2 - Mamdani (Scikit-Fuzzy) | Input: the **Pseudo R²** only, `r2_score(y_true=sample, y_pred=PQC)` on max-normalised traces. Five membership functions (Very Low ... Very High, Table 1), **centroid** defuzzification. |
+| 3 - DTW rescue | Only when the Pseudo R² fails: DTW / (n + m) (Eq. 4), bands 0.002 / 0.008 / 0.120. |
+| 4 - MRL substances | Ĉ against the internal standard closest in tR; Ĉ/cut-off bands 1-1.35 / 1.30-1.60 / ≥ 1.55. |
+
+The tests in `virtual-analyst/tests/` check each of these definitions (`python -m pytest tests`).
 
 No access control, by design. This is a bench tool, running on the machine of whoever does
 the analysis. **Do not expose it on a network without putting authentication in front.**
@@ -697,8 +708,7 @@ Possible values in `sample_results.result`:
 | Value | Meaning |
 |---|---|
 | `NEGATIVE` | Not suspect. |
-| `SUSPECT_LOW` / `_MED` / `_HIGH` | The level decided by the fuzzy step, after the R²+DTW gate passed. |
-| `SUSPECT_VERY_HIGH` | The sample peak is taller than the control's - a shortcut that skips the fuzzy step. |
+| `SUSPECT_VERY_LOW` / `_LOW` / `_MED` / `_HIGH` / `_VERY_HIGH` | The suspicion level: from Protocol #1 (High) or #2 (Low), from the Mamdani inference over the Pseudo R² (any of the five levels), from the DTW rescue (Low/Medium/High) or, for MRL substances, from the Ĉ/cut-off bands (Low/Medium/High). |
 | `NOT_INTERPRETED` | A visualisation-only substance (the `no_analyze` rule): extracted and plotted, never classified. |
 | `INVALID` | It could not be evaluated (no peak in the CQCL, a window with fewer than 2 points). **It produces no row** - the substance simply does not appear. |
 
@@ -761,7 +771,8 @@ system drive - `py -m tools.check_env` shows how much is in use.
 
 | File | Origin | What changed |
 |---|---|---|
-| `app/services/virtual_analyst.py` | the production pipeline | Only the plumbing: MariaDB -> SQLite, this project's ClickHouse. **The chemistry was not touched.** |
+| `app/services/article_pipeline.py` | the article (Sections 2.3, 2.5-2.8, Table 1, Eq. 4) | Written for this repository: the interpretation steps as the article describes them. |
+| `app/services/virtual_analyst.py` | the production pipeline | The plumbing (MariaDB -> SQLite, this project's ClickHouse); the decision delegates to `article_pipeline.py`. Kept from production, since the article's steps do not cover them: the internal-standard gate on the injection, the fallback to the reinjected PQC, the substance groups. |
 | `app/services/data_provider.py` | the production `DbDataProvider` | Same. The calibration against MSFileReader (the RT edge tolerance, the smoothing sigma, the `LEFT JOIN` that zeroes an empty scan) was kept character for character. |
 | `app/services/build_method_snapshot.py` | same | Only the connection. |
 | `app/services/convert.py` | the production ingestion | It gained the on-screen converter choice (production decides by vendor, with no option). |

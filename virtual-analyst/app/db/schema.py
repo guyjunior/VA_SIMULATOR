@@ -358,21 +358,22 @@ ANALYSIS_TABLES = [
 SEED_RULES = [
     (
         "standard",
-        "Standard (R2 + DTW)",
-        "Gate over the CQCL peak window: SUSPECT when R2 > r2_threshold AND DTW < dtw_limit. "
-        "If it comes out NEGATIVE against the CQCL, it tries again against the CQCL_reinj.",
+        "Standard (Steps 1-4)",
+        "Protocol #1 (sample above PQC -> High), Mamdani over the Pseudo R2 (centroid), DTW/(n+m) "
+        "rescue, C_hat/cut-off bands for MRL substances. If NEGATIVE against the CQCL, it tries "
+        "again against the CQCL_reinj.",
     ),
     (
         "two_peaks",
         "Two peaks",
-        "For substances eluting in two peaks (isomers/metabolites). Evaluates both CQCL peaks "
-        "separately; one passing is enough.",
+        "Co-eluting isomers: Steps 1-4 on each CQCL peak separately (split at the valley); the "
+        "most severe verdict is kept.",
     ),
     (
         "any_points",
-        "Height ratio",
-        "No R2/DTW: compares the sample height against the control height over a fixed window "
-        "centred on the CQCL peak, against any_points_ratio_limit.",
+        "Any points (Protocol #2)",
+        "Substances with no MRL: Steps 1-4 with Protocol #2 - a PQC/sample apex ratio <= "
+        "any_points_ratio_limit (100 by default) gives Low.",
     ),
     (
         "no_analyze",

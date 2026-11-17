@@ -9,13 +9,17 @@ clickhouse-connect==0.8.15
 pyteomics==4.7.5
 lxml==5.3.0
 
-# The numeric core of the pipeline. An upgrade here can change results.
+# The numeric core of the pipeline. This combination was validated against the
+# original stack on two real batches, substance by substance, within a 1e-6
+# tolerance - so an upgrade here is a change to the results, not just to a
+# dependency.
 numpy>=2.0
 pandas>=2.2
 scipy>=1.13
-scikit-learn>=1.5    # r2_score - the Pseudo R2
-dtaidistance>=2.3.12 # internal-standard gate only (the substances use Eq. 4)
+scikit-learn>=1.5
+dtaidistance>=2.3.12
 
-# Mamdani fuzzy inference engine (Scikit-Fuzzy, as in the article): membership
-# functions, rule base and centroid defuzzification - app/services/article_pipeline.py.
+# Mamdani fuzzy inference engine (Section 2.7 of the article): membership
+# functions, rule base and centroid defuzzification. Pinned to the version
+# used in production during the evaluation period (tag v1.0-evaluated).
 scikit-fuzzy==0.5.0

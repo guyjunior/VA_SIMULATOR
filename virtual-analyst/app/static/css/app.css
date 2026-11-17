@@ -225,7 +225,7 @@ button.small, .button.small { padding: 3px 8px; font-size: 12px; }
 
 .res-SUSPECT_VERY_HIGH, .res-SUSPECT_HIGH { color: var(--suspect-high); font-weight: 650; }
 .res-SUSPECT_MED { color: var(--suspect-med); font-weight: 650; }
-.res-SUSPECT_LOW, .res-SUSPECT_VERY_LOW, .res-SUSPECT { color: var(--suspect-low); font-weight: 650; }
+.res-SUSPECT_LOW, .res-SUSPECT { color: var(--suspect-low); font-weight: 650; }
 .res-NEGATIVE { color: var(--negative); }
 .res-NOT_INTERPRETED, .res-INVALID { color: var(--muted); }
 
